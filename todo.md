@@ -45,7 +45,7 @@ cmake -S . -B build && cmake --build build -j && ctest --test-dir build --output
 These are the items flagged as "not covered yet" in `docs/testing.md`, plus the parser sharp
 edge found while writing the docs. No new features, just correctness and proof.
 
-- [ ] **Reject duplicate ghost markers** (`core/src/Level.cpp:221-249`). Today a second `2`
+- [x] **Reject duplicate ghost markers** (`core/src/Level.cpp:221-249`). Today a second `2`
       silently wins over the first. Add the check next to the existing duplicate-`P` check and
       a `Level.rejectsDuplicateGhostMarker` test.
 - [x] **Parse every level file in a test** (`tests/TestLevel.cpp`): iterate `levels/` with
