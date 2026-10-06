@@ -86,8 +86,11 @@ edge found while writing the docs. No new features, just correctness and proof.
       *Done:* added `levels/level2.txt` with shorter scatter phases (`modeSchedule = 6,20,...`),
       it loads correctly, `TestLevel.loadsAllLevelFilesInLevelsDirectory` picks it up, and all
       98 tests pass. (Kept the name `level2.txt` — alphanumeric sort after `level1.txt`.)
-- [ ] **Difficulty curve** expressed in the level files: shorter scatter phases, faster ghosts,
+- [x] **Difficulty curve** expressed in the level files: shorter scatter phases, faster ghosts,
       fewer frightened seconds for later levels. The knobs already exist in `LevelConfig`.
+      *Done:* updated `levels/level2.txt` to `ghostSpeed = 5.5`, `frightenedSeconds = 4.0` and
+      shorter phases already set (`modeSchedule = 6,20,6,20,4,20,4,20`). Still deterministic,
+      all 98 tests pass.
 - [ ] **Fruit / bonus items** (M): a new `Tile` kind, a spawn timer in `Game`, points that
       depend on the level number, and a `FruitEaten` event. Touches `Tile.hpp`, `Level.cpp`
       (parsing), `Game.cpp` and `Events.hpp` — a good exercise of the layering.

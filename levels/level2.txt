@@ -1,10 +1,10 @@
 name = Level 2
 playerSpeed = 6.0
-ghostSpeed = 5.0
+ghostSpeed = 5.5
 frightenedSpeed = 3.5
 tunnelSpeed = 4.0
 eyesSpeed = 16.0
-frightenedSeconds = 6.0
+frightenedSeconds = 4.0
 startingLives = 3
 modeSchedule = 6,20,6,20,4,20,4,20
 
