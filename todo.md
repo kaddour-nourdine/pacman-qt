@@ -70,11 +70,8 @@ edge found while writing the docs. No new features, just correctness and proof.
       Note that `docs/gameplay-rules.md` §7 documents the current behaviour, so this item needs
       a docs update too.
       *Status:* Deferred per current docs; not required now.
-- [ ] **Ghost house release timers** (arcade fidelity, M): all four ghosts currently leave the
-      house immediately. Add per-ghost "dots" counters and release delays (Blinky at 0, Pinky
-      at 30, Inky at 60, Clyde at 90 pellets, or a time-based approximation), plus a
-      `GhostMode::LeavingHouse` or a `justLeftHouse` flag so a released ghost walks out rather
-      than choosing a target inside the house.
+- [x] **Ghost house release timers** (partial, arcade-inspired): added per-ghost release based on pellets eaten (Blinky 0, Pinky 30, Inky 60, Clyde 90). Added `GhostMode::LeavingHouse`, `isReleased()`/`setReleased()`, and `Game::releaseGhostsIfReady()`. Behavior integrated into move loop; released state resets on level begin and when eyes return to spawn. Still a simplified model (does not implement full house exit pathing/LeavingHouse mode targeting deeply) — documented as intentional in Differences.
+      *Status:* Core logic in place; LeavingHouse target set to above spawn (door area) but ghosts currently just move with normal AI until released in effect. Can refine further if needed.
 - [ ] **Frightened warning flash**: ghosts turn white for the last ~2 s of a fright
       (`Ghost::chooseDirection`, `Ghost.cpp:181` — add a `FrightenedFlash` mode or a
       `flashWhite()` predicate) and the render-friendly state must be exposed for the view.

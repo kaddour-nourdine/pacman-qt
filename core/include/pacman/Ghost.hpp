@@ -17,6 +17,7 @@ enum class GhostMode {
     Chase,
     Frightened,
     Eyes,
+    LeavingHouse,
 };
 
 const char* toString(GhostId id);
@@ -34,6 +35,9 @@ public:
     bool isFrightened() const { return mode_ == GhostMode::Frightened; }
     bool isEdible() const { return mode_ == GhostMode::Frightened; }
     bool isEyes() const { return mode_ == GhostMode::Eyes; }
+    bool isLeavingHouse() const { return mode_ == GhostMode::LeavingHouse; }
+    bool isReleased() const { return released_; }
+    void setReleased(bool released) { released_ = released; }
 
     void updateTarget(Vec2 playerPosition, Direction playerDirection, Vec2 blinkyPosition);
 
@@ -64,6 +68,7 @@ private:
     Vec2 playerPosition_;
     Vec2 blinkyPosition_;
     Vec2 target_;
+    bool released_ = true;
 };
 
 }

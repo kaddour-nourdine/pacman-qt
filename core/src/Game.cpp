@@ -89,6 +89,10 @@ void Game::beginLevel() {
     player_.reset();
     for (Ghost& ghost : ghosts_) {
         ghost.reset();
+        ghost.setReleased(false);
+    }
+    if (!ghosts_.empty()) {
+        ghosts_.front().setReleased(true);
     }
     scheduleSeconds_ = 0.0f;
     frightenedSecondsLeft_ = 0.0f;
@@ -151,6 +155,7 @@ void Game::simulate(float deltaSeconds) {
     updateFrightened(deltaSeconds);
     movePlayer(deltaSeconds);
     collectPellet();
+    releaseGhostsIfReady();
     moveGhosts(deltaSeconds);
     checkCollisions();
 
@@ -212,6 +217,7 @@ void Game::moveGhosts(float deltaSeconds) {
     for (Ghost& ghost : ghosts_) {
         if (ghost.isEyes() && ghost.hasReachedSpawn()) {
             ghost.reset();
+            ghost.setReleased(true);
             Event event;
             event.type = EventType::GhostRespawned;
             event.x = ghost.tileX();
@@ -220,9 +226,48 @@ void Game::moveGhosts(float deltaSeconds) {
             pushEvent(event);
             continue;
         }
+        if (!ghost.isReleased() && !ghost.isEyes()) {
+            if (!ghost.isFrightened()) {
+                ghost.setMode(GhostMode::Scatter);
+            }
+            ghost.updateTarget(playerPosition, playerDirection, blinkyPosition);
+            ghost.setSpeed(speedFor(ghost));
+            ghost.update(deltaSeconds);
+            continue;
+        }
         ghost.updateTarget(playerPosition, playerDirection, blinkyPosition);
         ghost.setSpeed(speedFor(ghost));
         ghost.update(deltaSeconds);
+    }
+}
+
+void Game::releaseGhostsIfReady() {
+    if (ghosts_.empty()) {
+        return;
+    }
+    const int pellets = player_.pelletsEaten();
+    for (Ghost& ghost : ghosts_) {
+        if (ghost.isReleased() || ghost.isEyes()) {
+            continue;
+        }
+        bool shouldRelease = false;
+        switch (ghost.id()) {
+        case GhostId::Blinky:
+            shouldRelease = true;
+            break;
+        case GhostId::Pinky:
+            shouldRelease = pellets >= 30;
+            break;
+        case GhostId::Inky:
+            shouldRelease = pellets >= 60;
+            break;
+        case GhostId::Clyde:
+            shouldRelease = pellets >= 90;
+            break;
+        }
+        if (shouldRelease) {
+            ghost.setReleased(true);
+        }
     }
 }
 
