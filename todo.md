@@ -30,7 +30,7 @@ cmake -S . -B build && cmake --build build -j && ctest --test-dir build --output
 
 ## Phase 0 — housekeeping (do this first, S)
 
-- [ ] **Initialise a git repository** and commit the current green state, so every later
+- [x] **Initialise a git repository** and commit the current green state, so every later
       experiment is revertible. Add a `.gitignore` for `build/`, `*.user`, `.cache/`,
       `*.apk`, `android/`, Qt Creator user files.
       *Done when:* `git log` shows one commit and `build/` is ignored.
@@ -48,10 +48,10 @@ edge found while writing the docs. No new features, just correctness and proof.
 - [ ] **Reject duplicate ghost markers** (`core/src/Level.cpp:221-249`). Today a second `2`
       silently wins over the first. Add the check next to the existing duplicate-`P` check and
       a `Level.rejectsDuplicateGhostMarker` test.
-- [ ] **Parse every level file in a test** (`tests/TestLevel.cpp`): iterate `levels/` with
+- [x] **Parse every level file in a test** (`tests/TestLevel.cpp`): iterate `levels/` with
       `std::filesystem`, load each file, assert success, assert at least one pellet and exactly
       one `P`. *Done when:* dropping a broken `.txt` into `levels/` fails the `Level` suite.
-- [ ] **Soak test with invariants** (`tests/TestGame.cpp` or a new `tests/TestSoak.cpp`): play
+- [x] **Soak test with invariants** (`tests/TestGame.cpp` or a new `tests/TestSoak.cpp`): play
       `level1.txt` to completion at full speed and assert, on every step, that
       - no entity's tile is a wall,
       - the player never stands on a door tile (it cannot enter the house in this level),
@@ -64,10 +64,12 @@ edge found while writing the docs. No new features, just correctness and proof.
       the ghost id (`Ghost::pointsValue`, `Ghost.cpp:139`). Decide whether to keep the simple
       arcade-accurate-per-ghost table (documented in `docs/gameplay-rules.md`) or implement the
       chain, and make the docs match.
+      *Note:* Current implementation gives points by ghost id (200/400/800/1600 by Blinky/Pinky/Inky/Clyde). Docs state this. Keeping as-is for now unless explicitly requested to change; decision needed.
 - [ ] **Pixel-accurate collision** (optional, M): `Game::checkCollisions` currently compares
       tile indices (`Game.cpp:263`). A sprite-accurate version compares a small overlap box.
       Note that `docs/gameplay-rules.md` §7 documents the current behaviour, so this item needs
       a docs update too.
+      *Status:* Deferred per current docs; not required now.
 - [ ] **Ghost house release timers** (arcade fidelity, M): all four ghosts currently leave the
       house immediately. Add per-ghost "dots" counters and release delays (Blinky at 0, Pinky
       at 30, Inky at 60, Clyde at 90 pellets, or a time-based approximation), plus a

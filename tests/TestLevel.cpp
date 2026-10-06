@@ -1,4 +1,6 @@
 #include <string>
+#include <filesystem>
+#include <vector>
 
 #include "Fixtures.hpp"
 #include "TestFramework.hpp"
@@ -141,4 +143,29 @@ PAC_TEST(Level, reportsMissingFile) {
     std::string error;
     CHECK(!Level::loadFile("/does/not/exist.txt", level, &error));
     CHECK(!error.empty());
+}
+
+PAC_TEST(Level, loadsAllLevelFilesInLevelsDirectory) {
+    const std::filesystem::path levelsDir = std::filesystem::path(PACMAN_LEVELS_DIR);
+    std::vector<std::filesystem::path> levelFiles;
+    for (const auto& entry : std::filesystem::directory_iterator(levelsDir)) {
+        if (entry.is_regular_file()) {
+            const std::string ext = entry.path().extension().string();
+            if (ext == ".txt") {
+                levelFiles.push_back(entry.path());
+            }
+        }
+    }
+    CHECK(!levelFiles.empty());
+
+    for (const auto& path : levelFiles) {
+        Level level;
+        std::string error;
+        CHECK(Level::loadFile(path.string(), level, &error));
+        if (!level.isValid()) {
+            pactest::reportFailure(__FILE__, __LINE__, path.string() + " failed to load: " + error);
+            continue;
+        }
+        CHECK(level.pelletCount() >= 1);
+    }
 }
