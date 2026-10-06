@@ -18,8 +18,8 @@ The project follows a **model / view split**:
 
 | Part | State |
 | --- | --- |
-| Simulation model (maze, player, ghosts, rules, clock) | Done, 81 tests passing |
-| Level file format + one playable level (`levels/level1.txt`) | Done |
+| Simulation model (maze, player, ghosts, rules, level list, clock) | Done, 98 tests passing |
+| Level file format, level list (`LevelManager`) + one playable level (`levels/level1.txt`) | Done |
 | Qt Quick / QML view, window, input | **Not started** (needs Qt 6 development packages) |
 | Android packaging | **Not started** |
 | Sound, sprites, score HUD, high-score table | **Not started** |
@@ -64,7 +64,7 @@ core/                       the model library (no graphics, no Qt)
   src/                      implementations
 levels/
   level1.txt                the playable level, written in a plain ASCII format
-tests/                      the test suite (81 tests, no external framework)
+tests/                      the test suite (98 tests, no external framework)
 docs/                       the documentation you are reading
 ```
 
@@ -78,6 +78,7 @@ Tile.hpp      what a single maze tile is        (no dependencies)
 Random.hpp    seeded random numbers             (no dependencies)
 Events.hpp    the "something happened" messages
 Level.hpp     parsed level file  →  Level
+LevelManager.hpp  the campaign: list of levels      uses Level
 Maze.hpp      the playable grid + pellet state       uses Level
 Entity.hpp    anything that walks on the grid        uses Maze
 Player.hpp    the player                             uses Entity
@@ -144,7 +145,8 @@ A few ideas explain most of the code:
 Keep these so the model stays usable from Qt (and from Android):
 
 - `core/` must not include any Qt, OpenGL, windowing or platform header. No `printf`, no
-  reading the system clock, no files other than the level file.
+  reading the system clock, no files other than level files (`Level::loadFile` and
+  `LevelManager::loadDirectory`).
 - Game rules belong in `Game`, not in the view. If the player cannot enter the ghost house,
   that is a `Maze::canEnter` question; if a ghost should chase, that is `Ghost::chaseTarget`.
 - Anything the view may want to react to should be reported through `Event`

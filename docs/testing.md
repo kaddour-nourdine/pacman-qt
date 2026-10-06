@@ -1,6 +1,6 @@
 # Testing
 
-The project has 81 tests in 10 suites, all green:
+The project has 98 tests in 11 suites, all green:
 
 ```
 $ ctest --test-dir build --output-on-failure
@@ -75,7 +75,7 @@ int main(int argc, char** argv) {
 `tests/CMakeLists.txt` turns each suite name into a CTest test:
 
 ```cmake
-foreach(suite Direction Vec2 Tile Level Maze Player Ghost Game Engine ModeSchedule)
+foreach(suite Direction Vec2 Tile Level LevelManager Maze Player Ghost Game Engine ModeSchedule)
     add_test(NAME ${suite} COMMAND pacman_tests ${suite})
 endforeach()
 ```
@@ -94,7 +94,7 @@ a parse error as a test failure:
 Maze maze(pactest::makeLevel(pactest::houseMap(), __FILE__, __LINE__));
 ```
 
-The six maps exist because testing on a 21×21 maze makes assertions mushy. Each one isolates
+The eight maps exist because testing on a 21×21 maze makes assertions mushy. Each one isolates
 one situation:
 
 | Fixture | Shape | Exists to test |
@@ -105,6 +105,8 @@ one situation:
 | `junctionMap()` | 5×5 open room, player in a corner | ghost tie-breaking (only Up is legal there) |
 | `gameMap()` | 13×7, house in the middle, one power pellet | full `Game` flows; 34 pellets, all reachable |
 | `modeMap()` | `gameMap` plus a header: speeds `0.001`, `modeSchedule = 1,2`, `frightenedSeconds = 1.0` | mode schedule and fright timers without waiting real seconds |
+| `firstRoomMap()` | 7×6, named `First Room`, 15 pellets, ghost markers in the open | the first entry of a two-level campaign |
+| `secondRoomMap()` | 7×6, named `Second Room`, 12 pellets, a different layout | level progression: the game must notice that the maze changed |
 
 `modeMap` is the most useful trick in the suite: it makes ghosts almost stationary, so a test
 can run a whole scatter phase (`game.step(0.5f)`) in microseconds and assert on `globalMode()`.
@@ -118,11 +120,12 @@ can run a whole scatter phase (`game.step(0.5f)`) in microseconds and assert on 
 | `Direction` | 4 | opposites, axis deltas, diagonal-to-`None` conversion |
 | `Vec2` | 2 | arithmetic; `tileCenterOf` / `tileIndexOf` round trip |
 | `Tile` | 2 | classification predicates; character ⇄ tile round trip |
-| `Level` | 14 | geometry and markers, header options, defaults, **every error path** (ragged rows, no `P`, two `P`s, unknown option, bad number, invalid character, blank line in map, empty file, missing file), plus loading the real `level1.txt` |
+| `Level` | 16 | geometry and markers, header options, defaults, **every error path** (ragged rows, no `P`, two `P`s, duplicate ghost marker, unknown option, bad number, invalid character, blank line in map, empty file, missing file), plus loading the real `level1.txt` and every file in `levels/` |
+| `LevelManager` | 11 | empty list, 1-based picking with wrapping, `nameFor` labels, invalid level rejected, `clear`, loading `level1.txt`, and `loadDirectory`: sorted order, appending, all-or-nothing on a broken file, missing/empty directory |
 | `Maze` | 10 | out-of-bounds as wall, pellets consumed once, level completion, `resetPellets`, doors per actor, tunnel wrapping, pellet-free tunnels, shortest path, path across a tunnel |
 | `Player` | 12 | spawn, partial and whole tiles, exact one tile per second, turn applied at the next centre, ignoring a turn into a wall, stopping at a wall, restarting after a block, tunnel wrap, door blocked, counters, animation phase, reset |
 | `Ghost` | 14 | spawn positions, point values, scatter corners, all four chase targets, tie-break preference, moving towards a target, reversal on fright, deterministic frightened choice, eyes pathing through the door, reset, `toString` |
-| `Game` | 13 | ready-and-frozen, pellet collection and events, power pellet frightens ghosts, fright ending and schedule resumption, eating a ghost, eyes respawn, collision kills, game over after three lives, level completion and level 2, full reset, seed reproducibility, the real level end to end |
+| `Game` | 17 | ready-and-frozen, pellet collection and events, power pellet frightens ghosts, fright ending and schedule resumption, eating a ghost, eyes respawn, collision kills, game over after three lives, level completion and level 2, full reset, walking the `LevelManager` list (advance, wrap, lives carrying over, `reset` back to level 1, empty list ⇒ game over), seed reproducibility, the real level end to end |
 | `Engine` | 8 | fixed step size, partial-step accumulation, long-frame clamping, time scale, ignoring non-positive frames, no simulation while `Ready`, real-time driving, reproducibility with jittered frame times |
 | `ModeSchedule` | 2 | default alternation, custom durations |
 
@@ -179,12 +182,8 @@ fail is decoration.
 
 - **Rendering**: there is no view, so nothing about drawing, input devices or timing on a real
   display is tested. The first Qt tests will need a headless platform plugin.
-- **Level file coverage**: only `level1.txt` is loaded by tests; there is no test that walks
-  every file in `levels/` and asserts it parses.
-- **Duplicate ghost markers**: currently the last one silently wins (see
-  [`level-format.md`](level-format.md)); no test pins that behaviour, because it is probably a
-  parser bug rather than a feature.
-- **Long-run stability**: there is no soak test running a full level to completion, and no
-  invariant checker ("ghosts must never end up inside a wall") over many simulated frames.
+- **Reachability**: "every pellet is reachable by the player, and the house is not" is checked
+  by hand for `level1.txt` and only indirectly by `Game.playsRealLevelEndToEnd`. A BFS
+  validator is on the Phase 3 list in `todo.md`.
 - **Property-based / fuzz testing**: the parser's rejection paths are tested by hand-written
   cases; generating random maps would find more.

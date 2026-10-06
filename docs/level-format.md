@@ -1,7 +1,7 @@
 # Level file format
 
 Levels are plain text. They live in `levels/`, are read by `Level::loadFile`
-(`core/src/Level.cpp:291`) and validated by `Level::parse` (`core/src/Level.cpp:154`). There is
+(`core/src/Level.cpp:294`) and validated by `Level::parse` (`core/src/Level.cpp:154`). There is
 no binary format and no asset pipeline: edit the file, rebuild nothing, play.
 
 ```
@@ -51,7 +51,7 @@ Every key is optional; the defaults come from `LevelConfig` (`core/include/pacma
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `name` | text | `untitled` | Shown by the (future) level select screen. |
+| `name` | text | `untitled` | The level's label: `Game::levelName()` / `LevelManager::nameFor(n)`. |
 | `playerSpeed` | float > 0 | `6.0` | Player tiles per second. |
 | `ghostSpeed` | float > 0 | `5.0` | Ghost tiles per second while scattering/chasing. |
 | `frightenedSpeed` | float > 0 | `3.5` | Ghost speed while frightened. |
@@ -81,10 +81,12 @@ Notes:
 - a blank line appears *inside* the map (`"blank line inside the map body"`); a single blank
   line between header and map is fine, and so is a trailing one at end of file;
 - there is no `P`, or more than one `P`;
+- a ghost marker `1`–`4` appears twice (`"map has more than one ghost marker '2'"`);
 - no walkable tile is left for a ghost that has no marker.
 
-One sharp edge to know about: a duplicated ghost marker (two `2`s) is **not** an error — the
-last one in the file wins. Keep exactly one of each of `1`–`4`.
+Keep exactly one of each of `1`–`4`, or omit a marker entirely and let the parser place that
+ghost on the first free tile. A typo such as `2324` now fails loudly instead of silently moving
+Pinky.
 
 Errors are always produced, never thrown, and always readable:
 
@@ -99,7 +101,7 @@ if (!Level::loadFile("levels/level1.txt", level, &error)) {
 ### Ghosts without a marker
 
 If a level omits `1`–`4`, `Level::parse` places the missing ghosts on the first walkable tile
-that is not the player's start, scanning row by row (`Level.cpp:263`) and flagging
+that is not the player's start, scanning row by row (`Level.cpp:267`) and flagging
 `GhostSpawn::fromMap = false` so the caller can tell the difference. Small test levels
 therefore only need a `P`.
 
@@ -173,8 +175,14 @@ file and simulating 600 frames.
 5. Verify it:
 
 ```sh
-./build/tests/pacman_tests Level        # parser tests, not your level
+./build/tests/pacman_tests Level        # parser tests, every file in levels/
 ```
+
+Everything in `levels/` is loaded by `TestLevel.loadsAllLevelFilesInLevelsDirectory` on every
+`ctest` run, so a broken file fails the build even if no test names it.
+`LevelManager::loadDirectory` reads the same directory for the game itself: it loads every
+`*.txt` **sorted by file name**, which is the campaign order — so name the files `level01.txt`, `level02.txt`, …
+rather than `level1.txt` … `level10.txt`, otherwise `level10` sorts before `level2`.
 
 There is no dedicated "validate my file" tool yet. Until there is one, the quickest check is
 to add a line to `tests/TestLevel.cpp` calling

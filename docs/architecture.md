@@ -32,8 +32,8 @@ view layer translates platform events into model calls and model state into pixe
 
 Consequences of the split, all visible in the code:
 
-- `core/` has no `#include <Qt...>`, no graphics, no file I/O except loading a level, and no
-  access to the system clock. You can unit-test it without a display (which is exactly what
+- `core/` has no `#include <Qt...>`, no graphics, no file I/O except loading level files, and
+  no access to the system clock. You can unit-test it without a display (which is exactly what
   `tests/` does).
 - The model exposes **data**, never handles: positions, directions, scores, enums, and a queue
   of `Event` structs. The view reads that data once per frame and draws it.
@@ -41,7 +41,7 @@ Consequences of the split, all visible in the code:
   The model decides whether and when the turn actually happens (see §4). This is what allows
   the authentic "queued turn" behaviour of the arcade game.
 - `Game` hands out mutable references to the player and the ghosts
-  (`Game.hpp:76`, `Game.hpp:78`). That is a deliberate seam for tests and for the future view,
+  (`Game.hpp:81`, `Game.hpp:83`). That is a deliberate seam for tests and for the future view,
   but production code should prefer the read-only accessors.
 
 ---
@@ -54,14 +54,16 @@ Each layer only knows the layers above it in this list:
 | --- | --- | --- |
 | Value types | `Vec2.hpp`, `Direction.hpp`, `Tile.hpp`, `Random.hpp`, `Events.hpp` | Plain data and small helpers. No knowledge of the game. |
 | Content | `Level.hpp/.cpp` | Turns a text file into validated, immutable level data (grid, spawn points, tuning values). |
+| Campaign | `LevelManager.hpp/.cpp` | Owns the ordered list of levels: picks the level for a level number (wrapping at the end) and loads a directory of level files. |
 | Board | `Maze.hpp/.cpp` | The *rules of the tiles*: what may be entered, where pellets are, how tunnels wrap, and how to find a path. |
 | Movement | `Entity.hpp/.cpp` | The shared "walk in a straight line between tile centres" algorithm. |
 | Characters | `Player.hpp/.cpp`, `Ghost.hpp/.cpp` | Who the characters are: spawn/reset, player stats, ghost AI targets. |
 | Game rules | `Game.hpp/.cpp` | Order of updates, pellet scoring, collisions, lives, level flow, the scatter/chase schedule, event emission. |
 | Time | `Engine.hpp/.cpp` | Converts variable real frame times into fixed simulation steps. |
 
-The dependency graph is a chain: `Engine → Game → {Player, Ghost, Maze} → Entity → Maze →
-Level → {Tile, Direction, Vec2}`. There are no cycles.
+The dependency graph is a chain: `Engine → Game → {Player, Ghost, Maze, LevelManager} → Entity
+→ Maze → Level → {Tile, Direction, Vec2}`; `LevelManager` itself only depends on `Level`. There
+are no cycles.
 
 ---
 
@@ -75,8 +77,8 @@ Engine::update(0.0167)                         Engine.cpp:16
   ├─ scale by timeScale, clamp to maxFrameSeconds (0.25 s)
   ├─ accumulator += scaled
   └─ while accumulator >= 1/120:
-        Game::step(1/120)                      Game.cpp:113
-          └─ if state == Running: simulate()   Game.cpp:150
+        Game::step(1/120)                      Game.cpp:139
+          └─ if state == Running: simulate()   Game.cpp:177
                1. updateFrightened(dt)   timers, then applyModes() for all ghosts
                2. movePlayer(dt)         player.update(dt) → Entity::update
                3. collectPellet()        remove pellet under the player, score, events
@@ -87,11 +89,11 @@ Engine::update(0.0167)                         Engine.cpp:16
 
 Three things are worth noticing:
 
-- **The order is fixed** (`Game.cpp:150`). The player moves before the ghosts, so a collision
+- **The order is fixed** (`Game.cpp:177`). The player moves before the ghosts, so a collision
   is resolved using the positions at the end of the step. If you change the order you change
   the game feel, so treat it as a rule, not an accident.
 - **Only `Running` simulates.** In `Ready`, `PlayerDied` and `LevelComplete` the call only
-  advances the pause timer (`Game.cpp:123-147`). That is why the game does not move until you
+  advances the pause timer (`Game.cpp:149-175`). That is why the game does not move until you
   call `start()`.
 - **`step` is the only way time passes.** The model never reads a clock. A test can therefore
   call `game.step(0.001f)` to advance a millisecond, or `engine.update(30.0)` to simulate half
@@ -188,7 +190,11 @@ special case for the left/right edges.
      └───────────────────────┴──────────────────────┘
 ```
 
-`Game::step` (`Game.cpp:113`) is the only place that transitions between these states.
+`Game::step` (`Game.cpp:139`) is the only place that transitions between these states. When
+the 2.0 s `LevelComplete` pause expires it first loads the next level from the `LevelManager`
+(`++levelNumber_`, `loadLevel(levels_.levelFor(levelNumber_))`, `Game.cpp:171`) and only then
+calls `beginLevel()`, so the view sees a fresh `LevelStarted` for level *n + 1* — or, with a
+one-level list, for the same map again.
 
 The view is not supposed to infer what happened by comparing two frames. The model reports
 it: every interesting moment is pushed into an `Event` (`Events.hpp`) with the coordinates
@@ -197,9 +203,11 @@ and the points involved:
 `LevelStarted`, `PelletEaten`, `PowerPelletEaten`, `GhostEaten`, `GhostRespawned`,
 `PlayerDied`, `LevelCompleted`, `GameOver`.
 
-The view drains them once per frame with `drainEvents()` (`Game.cpp:331`) and turns them into
+The view drains them once per frame with `drainEvents()` (`Game.cpp:405`) and turns them into
 a sound, a score popup or a sprite flash. `swap` in `drainEvents` is what makes it cheap:
-the queue is handed over empty and a fresh one is left behind.
+the queue is handed over empty and a fresh one is left behind. On `LevelStarted` the view
+reads `levelNumber()` and `levelName()`; it never has to keep its own copy of "which level am
+I on".
 
 ---
 
@@ -216,7 +224,9 @@ reproducible:
    seeding. `TestGame.ghostsAreReproducibleForSameSeed` asserts two games with the same seed
    stay identical after 400 steps.
 3. **No wall-clock time and no hidden global state.** Everything is a parameter or a member of
-   the object under test.
+   the object under test. The one place that touches the filesystem is
+   `LevelManager::loadDirectory`, and it sorts the file names before loading, so a directory
+   of levels produces the same campaign order on every machine.
 
 Floating point is exact enough for this: positions are `float`, the "am I on a centre?"
 check uses a tolerance of `1e-4` (`Entity.cpp:10`) and positions are snapped when they land
@@ -230,7 +240,8 @@ The design leaves a few obvious seams for work that has not been done yet:
 
 | To add… | Where |
 | --- | --- |
-| A new level / level selection | `Level::loadFile` + `Game`; a `LevelManager` is still missing |
+| More levels / a difficulty curve | drop `levelN.txt` into `levels/` and let `LevelManager::loadDirectory` pick it up; the knobs are `LevelConfig` |
+| A level-select screen | `LevelManager::levels()` + `nameFor(n)`; the view only reads |
 | Fruit, bonus items | `Tile` + `Player`/`Game::collectPellet` (a new tile kind and event) |
 | Sound | `Event`s are enough; add an audio adapter in the view |
 | Sprite animation | `Player::animationPhase()` and `GhostMode` already expose what is needed |

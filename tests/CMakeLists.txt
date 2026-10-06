@@ -4,6 +4,7 @@ add_executable(pacman_tests
     TestGame.cpp
     TestGhost.cpp
     TestLevel.cpp
+    TestLevelManager.cpp
     TestMaze.cpp
     TestPlayer.cpp
     TestPrimitives.cpp
@@ -21,6 +22,6 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(pacman_tests PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-foreach(suite Direction Vec2 Tile Level Maze Player Ghost Game Engine ModeSchedule)
+foreach(suite Direction Vec2 Tile Level LevelManager Maze Player Ghost Game Engine ModeSchedule)
     add_test(NAME ${suite} COMMAND pacman_tests ${suite})
 endforeach()

@@ -95,6 +95,11 @@ PAC_TEST(Level, rejectsDuplicatePlayer) {
     CHECK(rejects({"#####", "#P.P#", "#####"}));
 }
 
+PAC_TEST(Level, rejectsDuplicateGhostMarker) {
+    CHECK(rejects({"#######", "#.1.1.#", "#######"}));
+    CHECK(rejects({"########", "#P.2342#", "########"}));
+}
+
 PAC_TEST(Level, rejectsUnknownOption) {
     CHECK(rejects({"nope = 1", "#####", "#P..#", "#####"}));
 }

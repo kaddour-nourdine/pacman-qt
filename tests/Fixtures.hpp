@@ -98,4 +98,44 @@ inline std::vector<std::string> modeMap() {
     };
 }
 
+inline std::vector<std::string> firstRoomMap() {
+    return {
+        "name = First Room",
+        "playerSpeed = 0.001",
+        "ghostSpeed = 0.001",
+        "frightenedSpeed = 0.001",
+        "tunnelSpeed = 0.001",
+        "eyesSpeed = 0.001",
+        "frightenedSeconds = 1.0",
+        "modeSchedule = 5,5",
+        "",
+        "#######",
+        "#P.123#",
+        "#.....#",
+        "#.o...#",
+        "#4....#",
+        "#######",
+    };
+}
+
+inline std::vector<std::string> secondRoomMap() {
+    return {
+        "name = Second Room",
+        "playerSpeed = 0.001",
+        "ghostSpeed = 0.001",
+        "frightenedSpeed = 0.001",
+        "tunnelSpeed = 0.001",
+        "eyesSpeed = 0.001",
+        "frightenedSeconds = 1.0",
+        "modeSchedule = 5,5",
+        "",
+        "#######",
+        "#P..o.#",
+        "#.###.#",
+        "#1234.#",
+        "#.....#",
+        "#######",
+    };
+}
+
 }  // namespace pactest

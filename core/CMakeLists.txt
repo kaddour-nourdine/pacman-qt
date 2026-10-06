@@ -4,6 +4,7 @@ add_library(pacman_core STATIC
     src/Ghost.cpp
     src/Game.cpp
     src/Level.cpp
+    src/LevelManager.cpp
     src/Maze.cpp
     src/Player.cpp
 )
