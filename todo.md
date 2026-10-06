@@ -99,8 +99,10 @@ edge found while writing the docs. No new features, just correctness and proof.
       and emits `FruitEaten` with `kFruitPoints`. A proper fruit *spawn timer* (timed appearance
       at fixed positions) is still not implemented (and no level currently uses `F`); this is
       noted as deferred in docs to keep scope small.
-- [ ] **Extra life thresholds** (S): e.g. 10 000 points → `+1` life, in `Game::killPlayer`'s
+- [x] **Extra life thresholds** (S): e.g. 10 000 points → `+1` life, in `Game::killPlayer`'s
       sibling (`Game::collectPellet`) plus a test.
+      *Done:* award `+1` life at every `10000` points (applied when `score_ >= nextLifeScore_`),
+      tracking `nextLifeScore_ += 10000`. All 98 tests pass.
 
 ## Phase 3 — see the game without Qt (M) ← highest value before Phase 4
 
