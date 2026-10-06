@@ -14,7 +14,8 @@ function names are the reliable anchor.
 
 Top-level project. Sets C++17 (`CMAKE_CXX_EXTENSIONS OFF` means strict standard mode),
 defaults to `RelWithDebInfo`, defines the `PACMAN_BUILD_TESTS` option, and adds `core/` and
-`tests/`.
+`tests/`. It also defines `PACMAN_BUILD_APP` (default `OFF`, so a machine without Qt still
+builds the model) and, when it is `ON`, adds `app/`.
 
 ### `core/CMakeLists.txt`
 
@@ -27,8 +28,9 @@ a shared library or an Android `.so` must be position independent. Warnings
 ### `tests/CMakeLists.txt`
 
 Builds one executable `pacman_tests` from all `Test*.cpp` files and registers **one CTest test
-per suite** with a `foreach` loop. It also passes `PACMAN_LEVELS_DIR` as a compile definition
-so the tests can find `levels/level1.txt`.
+per suite** with a `foreach` loop. It also builds `pacman_tests_reach` (the separate
+reachability gate from `TestReachability.cpp`) and passes `PACMAN_LEVELS_DIR` as a compile
+definition so the tests can find `levels/level1.txt`.
 
 > If you add a new suite name, add it to that `foreach` list, otherwise the test will run when
 > you execute `pacman_tests` manually but CTest will never see it.
@@ -129,10 +131,14 @@ static fallback for out-of-range indices so callers never have to bounds-check.
 Two phases.
 
 *Parsing the header* — `applyHeaderEntry` (line 68) maps a key to a config field with strict
-conversion: `parseFloat`/`parseInt` use `strtof`/`strtol` and require the entire string to be
+conversion: `parseFloat`/`parseInt` use `std::from_chars` and require the entire string to be
 consumed, so `6.0x` or `abc` are errors rather than silently `0`. Positive-value checks are
 next to each key, which keeps the error messages specific
-(`invalid value for 'playerSpeed': 'x'`). Unknown keys fail loudly.
+(`invalid value for 'playerSpeed': 'x'`). Unknown keys fail loudly. `from_chars` is
+deliberately used instead of `strtof`/`strtol`: the latter honour the C locale, and because a
+Qt application installs the user's locale (`fr_FR` uses a decimal comma) a level could fail to
+load depending on the machine. See the regression test
+`Level.parsesIndependentlyOfNumericLocale`.
 
 *Parsing the map* — `Level::parse` (line 154) scans rows in order, treating the first
 non-`key = value` line as the start of the map. It enforces equal row widths, valid
@@ -408,6 +414,64 @@ without touching the model.
 `interpolationAlpha()` is the leftover fraction of a step. The model never interpolates
 itself, but a renderer can draw each entity between its previous and current position to stay
 smooth at any refresh rate.
+
+---
+
+## The application (`app/`)
+
+Built only when `PACMAN_BUILD_APP=ON`. Uses Qt 6 Quick and QuickControls2
+(`qt_add_executable` + `qt_add_qml_module`); the QML module URI is `PacMan` and `Main.qml`
+lives directly in `app/` (a flat layout avoids needing a `qmldir`).
+
+### `app/main.cpp`
+
+`QGuiApplication` + `QQmlApplicationEngine`. Sets the organisation/application names (`pacman-qt`
+/ `pacman`) before constructing the controller, because `QSettings` in the controller reads
+them. Creates the `GameController` on the stack, exposes it as the context property `"game"`,
+connects `objectCreationFailed` (a direct connection, so it fires before the event loop) and
+`warnings` to `qWarning`, then `loadFromModule("PacMan", "Main")`. If no root object was
+created it returns `-1`, so a broken QML file fails the process instead of running a blank
+window.
+
+### `app/GameController.hpp` / `app/GameController.cpp`
+
+The only class that includes both Qt and `core/`. It owns a `Game` (built from
+`LevelManager::loadDirectory(PACMAN_LEVELS_DIR)`) and an `Engine`, and it is where real time
+enters the program:
+
+- **Properties** (read by QML, change-notified by signals): `score`, `highScore`, `lives`,
+  `levelNumber`, `levelName`, `pelletsRemaining`, `stateName`, `paused`, `mazeData`, `itemData`,
+  `mazeCols/Rows`, `playerX/Y`, `playerMouth`, `playerDirection` and `ghosts`.
+- **Invokable slots**: `start()`, `reset()`, `togglePause()` and `requestDirection(int)` — a
+  thin translation of the four `Direction` values. Nothing here re-implements a rule.
+- **Frame loop**: a 16 ms `Qt::PreciseTimer` calls `onTick`, which measures real time with a
+  `QElapsedTimer` and passes it to `Engine::update`. Before each update it snapshots the player
+  and ghost positions; afterwards it exposes `previous + alpha × (current − previous)` using
+  `Engine::interpolationAlpha()`, so motion is smooth even though the model only steps at
+  120 Hz. A tunnel wrap would make `current − previous` huge, so a jump wider than half the
+  board is snapped instead of interpolated.
+- **Rendering data**: `mazeData` and `itemData` are strings rebuilt from `Maze` (walls, door,
+  tunnel, pellets, power pellets, fruit); the `ghosts` property is a `QVariantList` of maps
+  (`x`, `y`, `id`, `eyes`, `edible`, `flashing`) so QML never touches a C++ type.
+- **Events**: every `Event` drained from `Game` becomes a Qt signal — `levelStarted`,
+  `pelletEaten`, `powerPelletEaten`, `fruitEaten`, `ghostEaten`, `ghostRespawned`,
+  `playerDied`, `levelCompleted`, `gameOver` — which the QML side uses for popups and, later,
+  sound. This is the mechanism `architecture.md` §6 describes.
+- **Persistence**: the high score is read/written with `QSettings`. This is a *view* concern,
+  which is why the model has no file I/O.
+- **Pause**: `togglePause()` sets the engine time scale to `0` or `1` (only while `Running`).
+
+### `app/Main.qml`
+
+The window (640×760, black). A root `Column` takes focus and handles `Keys.onPressed`
+(arrows/WASD → `game.requestDirection(...)`, `Space`/`Return` → `start()`, `P`/`Esc` →
+`togglePause()`, `R` → `reset()`). Below a small HUD (score, high score, level name and lives
+as circles) an `Item` holds a `Canvas` that repaints on `mazeChanged`/`itemsChanged`/
+`actorsChanged`/`stateChanged`. The `Canvas` draws the maze, pellets, fruit, Pac-Man (with a
+mouth angle from `playerMouth`) and the ghosts (colour by id, blue/white when frightened,
+eyes-only when eaten). Overlays show `READY!`, `LEVEL CLEAR`, `GAME OVER`, `PAUSED` and
+`NO LEVELS FOUND` from `stateName`. A `Connections` block turns the controller's signals into a
+floating score popup with a `NumberAnimation`.
 
 ---
 

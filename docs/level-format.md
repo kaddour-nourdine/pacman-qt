@@ -65,6 +65,10 @@ Notes:
 
 - Values are parsed strictly (`Level.cpp:68`, `applyHeaderEntry`): the whole value must be a
   number, trailing junk is rejected, and speeds/durations must be positive.
+- Numbers always use a `.` decimal separator, regardless of the user's locale. Parsing uses
+  `std::from_chars` rather than `strtof`, because the latter would read `6.0` as "six" under a
+  locale that uses a comma (which is what a Qt app installs on start-up). Always write `6.0`,
+  never `6,0`.
 - An unknown key is an error (`"unknown level option"`), which catches misspelled keys instead
   of ignoring them.
 - `modeSchedule = 1,2` is how the tests compress the wave pattern into a couple of seconds.

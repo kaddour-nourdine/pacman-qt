@@ -11,10 +11,11 @@ holds only the state and the constraints.
 | Working directory | `/home/nourdine/Development/pacman-qt` |
 | Version control | git (branch master) |
 | Build | clean, no warnings with `-Wall -Wextra -Wpedantic` |
-| Tests | 98 tests, 11 CTest suites, **11/11 passing** |
+| Tests | 99 tests, 11 CTest suites, **11/11 passing** (plus `pacman_tests_reach`) |
 | Toolchain used | CMake 4.3.0, g++ (GCC) 16.2.1, Linux, 16 cores |
-| Qt | **not installed** (`qmake6` absent; only a Qt runtime path exists) — the Qt view cannot be started yet |
-| Last verified commands | `cmake -S . -B build && cmake --build build -j16 && ctest --test-dir build` |
+| Qt | **6.11 installed** (`qt6-qtbase-devel`, `qt6-qtdeclarative-devel`); QtQuick/QtQuick.Window/Controls runtime modules present |
+| View | `app/` builds with `-DPACMAN_BUILD_APP=ON`; runs under `QT_QPA_PLATFORM=offscreen` |
+| Last verified commands | `cmake -S . -B build -DPACMAN_BUILD_APP=ON && cmake --build build -j16 && ctest --test-dir build` |
 
 `build/` exists and is current, so a rebuild is incremental.
 
@@ -32,36 +33,45 @@ holds only the state and the constraints.
 ## What exists
 
 - `core/` — the whole simulation (see `docs/code-tour.md` for the file-by-file tour).
-- `levels/level1.txt` — 21×21, 170 pellets, validated by hand and by
-  `TestGame.playsRealLevelEndToEnd`.
+- `levels/level1.txt`, `levels/level2.txt` — two playable levels; `level2.txt` has a shorter
+  scatter schedule, faster ghosts and fewer frightened seconds.
 - `core/LevelManager` — owns the campaign: `add`/`loadFile`/`loadDirectory`, 1-based
   `levelFor` (wraps), `nameFor` for the view. `Game` takes it by value, advances on
   `LevelComplete`, reports `GameOver` on an empty list.
+- `tools/pacman_text` — ASCII terminal renderer with arrow/WASD input; `tools/ai_demo` — a
+  scripted demo. Both drive `Engine` and only read `Game`.
+- `app/` — the Qt Quick view (`PACMAN_BUILD_APP`, default `OFF`): `GameController` is the only
+  bridge to the model (Q_PROPERTY + invokable slots + per-`Event` signals); `Main.qml` draws the
+  maze/actors on a `Canvas`, shows the HUD/overlays, and handles keys.
 - `tests/` — custom harness, no external dependency; `tests/TestLevelManager.cpp` covers the
-  loader (temp directories, all-or-nothing, sorted directory scan).
-- `README.md`, `docs/{architecture,code-tour,gameplay-rules,level-format,testing}.md`,
-  `todo.md`.
-- **Not** written: any view/renderer, any Qt or Android code, a second level file.
+  loader (temp directories, all-or-nothing, sorted directory scan) and `tests/TestReachability.cpp`
+  is a separate binary that BFS-checks every level.
+- `README.md`, `docs/{architecture,code-tour,gameplay-rules,level-format,testing}.md`, `todo.md`.
 
 ## Open items carried over
 
-1. **Git history**: repo initialized; Phase 0/1 work and the LevelManager work are **not
-   committed yet** (the session stopped before any commit — check `git status` first).
-   Branch: master.
-2. `Game::checkCollisions` uses tile comparison, not sprite overlap — currently intentional and
+1. **Qt app is unverified on a real display** — only checked headless (`offscreen`). Confirm the
+   window, keyboard focus and `Canvas` rendering on a desktop session.
+2. **Locale-sensitive parsing is fixed** — `Level.cpp` now uses `std::from_chars` (was `strtof`,
+   which broke under Qt because `QGuiApplication` installs `fr_FR` and its comma decimal
+   separator). A regression test (`Level.parsesIndependentlyOfNumericLocale`) covers it.
+3. `Game::checkCollisions` uses tile comparison, not sprite overlap — currently intentional and
    documented (`docs/gameplay-rules.md` §7), revisit only as a deliberate fidelity decision.
-3. Ghost house release timers (pellet-based), frightened flash predicates, and corner turn restriction (level1 house area) are partially/explicitly implemented; see `docs/gameplay-rules.md` "Differences" for current state.
-4. `levels/` still has one file, so the campaign loops the same maze; next todo item is a real
-   second level (`level02.txt` — file-name order is the campaign order).
+4. Ghost house release timers (pellet-based), frightened flash predicates and the corner-turn
+   restriction are partially/explicitly implemented; see `docs/gameplay-rules.md` "Differences".
+5. Known quirk: `Ghost::forbidUpwardTurn()` forbids Up entirely at the spawn tile row, so Blinky
+   may bounce back into the house in `level1.txt` — verified by inspection, not yet fixed.
+6. Phase 4 remaining work: audio (`SoundPlayer` on `Event`s), a `QTest` headless assertion that a
+   key event reaches `player().direction()`, and sprite rendering.
 
-## Suggested first action tomorrow
+## Suggested first action next session
 
 ```sh
 cd /home/nourdine/Development/pacman-qt
-git status && git log --oneline -5
-cmake -S . -B build && cmake --build build -j16 && ctest --test-dir build
+git status && git log --oneline -8
+cmake -S . -B build -DPACMAN_BUILD_APP=ON && cmake --build build -j16 && ctest --test-dir build
+QT_QPA_PLATFORM=offscreen ./build/app/pacman_app    # quick smoke run
 ```
 
-Phase 1 is complete (including the duplicate-ghost check that was checked off prematurely).
-Continue from `todo.md` Phase 2 (second level / difficulty curve) or Phase 3
-(`tools/pacman_text`) if you want to watch the game run.
+Phases 1–3 are complete and Phase 4 is under way. Continue from the remaining Phase 4 items in
+`todo.md` (audio, headless `QTest`, sprites), then Phase 5 (Android).
