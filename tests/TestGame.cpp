@@ -316,3 +316,44 @@ PAC_TEST(ModeSchedule, honoursCustomDurations) {
     CHECK_EQ(schedule.modeAt(3.5f), GlobalMode::Chase);
     CHECK_NEAR(schedule.phaseDuration(1), 2.0, 1e-6);
 }
+
+PAC_TEST(Game, soakTestInvariants) {
+    Level level;
+    std::string error;
+    const std::string path = std::string(PACMAN_LEVELS_DIR) + "/level1.txt";
+    CHECK(Level::loadFile(path, level, &error));
+
+    Game game(level);
+    Engine engine(game);
+    engine.setTimeScale(10.0f);
+
+    const int totalPellets = game.pelletsRemaining();
+    const int totalPowerPellets = 4;
+    const int maxScore = totalPellets * 10 + totalPowerPellets * 50 + 4 * 1600;
+
+    for (int step = 0; step < 200000; ++step) {
+        engine.update(1.0f / 120.0f);
+        if (game.isOver() || game.state() == GameState::LevelComplete) {
+            break;
+        }
+        if (game.player().tileX() >= 0 && game.player().tileX() < game.maze().cols() &&
+            game.player().tileY() >= 0 && game.player().tileY() < game.maze().rows()) {
+            const Tile pt = game.maze().tileAt(game.player().tileX(), game.player().tileY());
+            CHECK(pt != Tile::Wall);
+            CHECK(pt != Tile::Door);
+        }
+        for (const auto& ghost : game.ghosts()) {
+            if (ghost.isEyes()) {
+                const float dx = static_cast<float>(ghost.spawnX()) - ghost.position().x;
+                const float dy = static_cast<float>(ghost.spawnY()) - ghost.position().y;
+                const float dist = std::sqrt(dx * dx + dy * dy);
+                if (dist < 100.0f) {
+                }
+            }
+        }
+        CHECK(game.score() >= 0);
+        if (maxScore > 0) {
+            CHECK(game.score() <= maxScore);
+        }
+    }
+}
