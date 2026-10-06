@@ -162,7 +162,6 @@ PAC_TEST(Level, loadsAllLevelFilesInLevelsDirectory) {
         }
     }
     CHECK(!levelFiles.empty());
-
     for (const auto& path : levelFiles) {
         Level level;
         std::string error;
