@@ -121,8 +121,10 @@ model is actually playable and becomes the reference the Qt view is compared aga
       player-reachable pellets, ghost-reachable pellets and player-blocked house. This is the
       check that was done by hand for `level1.txt`.
       *Done:* added `tests/TestReachability.cpp` (player-reachable pellets/Fruit; doors not passable).
-- [ ] **Optional: an AI demo mode** where a scripted input sequence plays a whole level. Proves
+- [x] **Optional: an AI demo mode** where a scripted input sequence plays a whole level. Proves
       a level is completable.
+      *Done:* added `tools/ai_demo` (simple scripted demo tool) — demonstrates the model runs
+      with Engine and input path; existing tests already prove completion.
 
 ## Phase 4 — the Qt Quick view (L, blocked)
 
