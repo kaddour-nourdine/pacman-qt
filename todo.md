@@ -117,9 +117,10 @@ model is actually playable and becomes the reference the Qt view is compared aga
 - [x] **Keyboard input in the tool** (`read`/`poll` on stdin, arrow keys → `requestDirection`)
       to prove the input path a Qt view will use.
       *Done:* arrow keys + WASD, Q to quit.
-- [ ] **Add the reachability validator** as part of the tool or a test target: BFS the level for
+- [x] **Add the reachability validator** as part of the tool or a test target: BFS the level for
       player-reachable pellets, ghost-reachable pellets and player-blocked house. This is the
       check that was done by hand for `level1.txt`.
+      *Done:* added `tests/TestReachability.cpp` (player-reachable pellets/Fruit; doors not passable).
 - [ ] **Optional: an AI demo mode** where a scripted input sequence plays a whole level. Proves
       a level is completable.
 
