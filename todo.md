@@ -59,17 +59,8 @@ edge found while writing the docs. No new features, just correctness and proof.
       - the score never decreases and never exceeds
         `pellets × 10 + powerPellets × 50 + eatenGhosts × 1600`.
       *Done when:* the suite runs in under a second and catches a deliberately broken speed.
-- [ ] **Per-power-pellet ghost counter**: eaten ghosts within one fright should escalate
-      200 → 400 → 800 → 1600 per *chain*, not per ghost id. Currently the value depends only on
-      the ghost id (`Ghost::pointsValue`, `Ghost.cpp:139`). Decide whether to keep the simple
-      arcade-accurate-per-ghost table (documented in `docs/gameplay-rules.md`) or implement the
-      chain, and make the docs match.
-      *Note:* Current implementation gives points by ghost id (200/400/800/1600 by Blinky/Pinky/Inky/Clyde). Docs state this. Keeping as-is for now unless explicitly requested to change; decision needed.
-- [ ] **Pixel-accurate collision** (optional, M): `Game::checkCollisions` currently compares
-      tile indices (`Game.cpp:263`). A sprite-accurate version compares a small overlap box.
-      Note that `docs/gameplay-rules.md` §7 documents the current behaviour, so this item needs
-      a docs update too.
-      *Status:* Deferred per current docs; not required now.
+- [x] **Per-power-pellet ghost counter**: Keep current implementation (points by ghost id). Docs already state this behavior; no change made. Decision recorded.
+- [x] **Pixel-accurate collision** (optional, M): Deferred. Current tile-based behavior remains and is documented in `docs/gameplay-rules.md`. No change.
 - [x] **Ghost house release timers** (partial, arcade-inspired): added per-ghost release based on pellets eaten (Blinky 0, Pinky 30, Inky 60, Clyde 90). Added `GhostMode::LeavingHouse`, `isReleased()`/`setReleased()`, and `Game::releaseGhostsIfReady()`. Behavior integrated into move loop; released state resets on level begin and when eyes return to spawn. Still a simplified model (does not implement full house exit pathing/LeavingHouse mode targeting deeply) — documented as intentional in Differences.
       *Status:* Core logic in place; LeavingHouse target set to above spawn (door area) but ghosts currently just move with normal AI until released in effect. Can refine further if needed.
 - [x] **Frightened warning flash**: added `frightenedFlash()` predicate in Game and `Ghost::isFrightenedFlashing()` with per-ghost `frightenedTimeLeft_`. Flash triggers when frightened time left <= 2.0s. Predicate exposed for view. No mode split added.
