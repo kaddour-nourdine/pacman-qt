@@ -35,6 +35,9 @@ public:
     bool isFrightened() const { return mode_ == GhostMode::Frightened; }
     bool isEdible() const { return mode_ == GhostMode::Frightened; }
     bool isEyes() const { return mode_ == GhostMode::Eyes; }
+    bool isFrightenedFlashing() const;
+    void setFrightenedTimeLeft(float seconds) { frightenedTimeLeft_ = seconds; }
+    float frightenedTimeLeft() const { return frightenedTimeLeft_; }
     bool isLeavingHouse() const { return mode_ == GhostMode::LeavingHouse; }
     bool isReleased() const { return released_; }
     void setReleased(bool released) { released_ = released; }
@@ -69,6 +72,7 @@ private:
     Vec2 blinkyPosition_;
     Vec2 target_;
     bool released_ = true;
+    float frightenedTimeLeft_ = 0.0f;
 };
 
 }

@@ -69,6 +69,7 @@ public:
     GlobalMode globalMode() const { return globalMode_; }
     float frightenedSecondsLeft() const { return frightenedSecondsLeft_; }
     bool isFrightened() const { return frightenedSecondsLeft_ > 0.0f; }
+    bool frightenedFlash() const { return frightenedSecondsLeft_ > 0.0f && frightenedSecondsLeft_ <= 2.0f; }
     int pelletsRemaining() const { return maze_.pelletsRemaining(); }
 
     const Maze& maze() const { return maze_; }

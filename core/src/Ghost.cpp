@@ -58,6 +58,7 @@ void Ghost::reset() {
     blinkyPosition_ = position();
     target_ = scatterCorner();
     released_ = true;
+    frightenedTimeLeft_ = 0.0f;
 }
 
 void Ghost::setMode(GhostMode mode) {
@@ -153,6 +154,13 @@ void Ghost::eat() {
 
 bool Ghost::hasReachedSpawn() const {
     return tileX() == spawnX_ && tileY() == spawnY_;
+}
+
+bool Ghost::isFrightenedFlashing() const {
+    if (mode_ != GhostMode::Frightened) {
+        return false;
+    }
+    return frightenedTimeLeft_ > 0.0f && frightenedTimeLeft_ <= 2.0f;
 }
 
 void Ghost::onArriveAtCenter() {
