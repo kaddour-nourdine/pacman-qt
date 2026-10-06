@@ -235,6 +235,11 @@ void Game::moveGhosts(float deltaSeconds) {
             ghost.update(deltaSeconds);
             continue;
         }
+        if (ghost.isFrightened() && frightenedSecondsLeft_ > 0.0f) {
+            ghost.setFrightenedTimeLeft(frightenedSecondsLeft_);
+        } else if (ghost.isFrightened() && frightenedSecondsLeft_ <= 0.0f) {
+            ghost.setFrightenedTimeLeft(0.0f);
+        }
         ghost.updateTarget(playerPosition, playerDirection, blinkyPosition);
         ghost.setSpeed(speedFor(ghost));
         ghost.update(deltaSeconds);
@@ -294,6 +299,7 @@ void Game::collectPellet() {
                 continue;
             }
             ghost.setMode(GhostMode::Frightened);
+            ghost.setFrightenedTimeLeft(frightenedSecondsLeft_);
         }
     }
 
