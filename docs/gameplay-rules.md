@@ -195,5 +195,5 @@ fidelity work remains:
 8. **No difficulty curve yet**: `startingLives`, speeds, frightened seconds and the schedule
    are per level *file*, and `Game` now walks a `LevelManager` list of them — but `levels/`
    still contains exactly one file, so every level is currently that same maze.
-9. **Extra lives** at score thresholds are not implemented.
+9. **Extra lives** at 10 000-point thresholds are implemented (see `Game::collectPellet`/`checkCollisions`).
 10. **Collisions are per tile**, not per pixel (see §7).
