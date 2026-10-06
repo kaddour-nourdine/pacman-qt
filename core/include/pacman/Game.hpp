@@ -47,6 +47,7 @@ class Game {
 public:
     static constexpr int kPelletPoints = 10;
     static constexpr int kPowerPelletPoints = 50;
+    static constexpr int kFruitPoints = 100;
     static constexpr float kDeathPauseSeconds = 1.6f;
     static constexpr float kLevelCompletePauseSeconds = 2.0f;
 

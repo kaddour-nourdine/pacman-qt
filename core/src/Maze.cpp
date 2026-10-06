@@ -22,9 +22,15 @@ Maze::Maze(Level level) : level_(std::move(level)) {
 void Maze::resetPellets() {
     tiles_ = base_;
     pelletsRemaining_ = 0;
+    fruitsRemaining_ = 0;
+    fruitsTotal_ = 0;
     for (const Tile tile : tiles_) {
         if (hasPellet(tile)) {
             ++pelletsRemaining_;
+        }
+        if (isFruit(tile)) {
+            ++fruitsRemaining_;
+            ++fruitsTotal_;
         }
     }
     pelletsTotal_ = pelletsRemaining_;
@@ -117,13 +123,19 @@ Tile Maze::takePellet(int x, int y) {
         return Tile::Empty;
     }
     Tile& tile = tiles_[static_cast<std::size_t>(y) * static_cast<std::size_t>(cols_) + static_cast<std::size_t>(wrapped)];
-    if (!hasPellet(tile)) {
-        return Tile::Empty;
+    if (hasPellet(tile)) {
+        const Tile taken = tile;
+        tile = Tile::Empty;
+        --pelletsRemaining_;
+        return taken;
     }
-    const Tile taken = tile;
-    tile = Tile::Empty;
-    --pelletsRemaining_;
-    return taken;
+    if (isFruit(tile)) {
+        const Tile taken = tile;
+        tile = Tile::Empty;
+        --fruitsRemaining_;
+        return taken;
+    }
+    return Tile::Empty;
 }
 
 Direction Maze::stepToward(int fromX, int fromY, int toX, int toY, bool passDoors) const {

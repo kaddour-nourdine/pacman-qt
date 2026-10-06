@@ -6,6 +6,7 @@ enum class EventType {
     LevelStarted,
     PelletEaten,
     PowerPelletEaten,
+    FruitEaten,
     GhostEaten,
     GhostRespawned,
     PlayerDied,

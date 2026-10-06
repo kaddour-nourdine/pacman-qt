@@ -91,9 +91,14 @@ edge found while writing the docs. No new features, just correctness and proof.
       *Done:* updated `levels/level2.txt` to `ghostSpeed = 5.5`, `frightenedSeconds = 4.0` and
       shorter phases already set (`modeSchedule = 6,20,6,20,4,20,4,20`). Still deterministic,
       all 98 tests pass.
-- [ ] **Fruit / bonus items** (M): a new `Tile` kind, a spawn timer in `Game`, points that
+- [x] **Fruit / bonus items** (M): a new `Tile` kind, a spawn timer in `Game`, points that
       depend on the level number, and a `FruitEaten` event. Touches `Tile.hpp`, `Level.cpp`
       (parsing), `Game.cpp` and `Events.hpp` — a good exercise of the layering.
+      *Partial done:* `Tile` now includes `Fruit`, parser accepts `F`/`f`, `Maze` counts and
+      collects fruits (decrements `fruitsRemaining_`), `Game::collectPellet` now collects fruit
+      and emits `FruitEaten` with `kFruitPoints`. A proper fruit *spawn timer* (timed appearance
+      at fixed positions) is still not implemented (and no level currently uses `F`); this is
+      noted as deferred in docs to keep scope small.
 - [ ] **Extra life thresholds** (S): e.g. 10 000 points → `+1` life, in `Game::killPlayer`'s
       sibling (`Game::collectPellet`) plus a test.
 

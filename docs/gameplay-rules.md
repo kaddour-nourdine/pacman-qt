@@ -184,7 +184,8 @@ fidelity work remains:
 2. **Any ghost may wander into the house.** Door tiles are walkable for ghosts, and target
    selection does not forbid the house interior. In the arcade only the doorway tiles are
    usable during play. Eyes deliberately do the opposite (they need the door).
-3. **No fruit / bonus items, no bonus life thresholds**, no inter-level cut-scenes.
+3. **No fruit / bonus items yet** (fruit tile and `FruitEaten` event exist in the model, but
+   no timed fruit spawn logic is implemented; no bonus life thresholds yet), no inter-level cut-scenes.
 4. **Frightened warning flash** is available via predicates (`Game::frightenedFlash()`, `Ghost::isFrightenedFlashing()`); ghost behavior/visuals can use these.
 5. **Corner turn restriction** prevents upward turns in the tiles above the ghost house door for level1 (ty==5, tx in {8..11}); this is hardcoded for now and not data-driven.
 6. **Frightened time does not stop while the player is dead** or while a level transition
