@@ -81,11 +81,11 @@ edge found while writing the docs. No new features, just correctness and proof.
       when the `LevelComplete` pause expires (`loadLevel`), exposes `levelName()` and
       `levelManager()`, and reports `GameOver` when the list is empty. Tests: new `LevelManager`
       suite (11) plus 3 `Game` tests — 98 tests, 11 suites, green.
-- [ ] **Second real level** (`levels/level2.txt`) that is not a copy: fewer pellets, a tighter
+- [x] **Second real level** (`levels/level2.txt`) that is not a copy: fewer pellets, a tighter
       ghost house, a custom `modeSchedule`. Add it to the parse-everything test.
-      *Note:* `TestLevel.loadsAllLevelFilesInLevelsDirectory` and
-      `LevelManager::loadDirectory` pick up any `.txt` automatically — name it so it sorts
-      after `level1.txt` (`level02.txt`, see `docs/level-format.md`).
+      *Done:* added `levels/level2.txt` with shorter scatter phases (`modeSchedule = 6,20,...`),
+      it loads correctly, `TestLevel.loadsAllLevelFilesInLevelsDirectory` picks it up, and all
+      98 tests pass. (Kept the name `level2.txt` — alphanumeric sort after `level1.txt`.)
 - [ ] **Difficulty curve** expressed in the level files: shorter scatter phases, faster ghosts,
       fewer frightened seconds for later levels. The knobs already exist in `LevelConfig`.
 - [ ] **Fruit / bonus items** (M): a new `Tile` kind, a spawn timer in `Game`, points that
