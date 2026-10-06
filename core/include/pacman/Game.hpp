@@ -117,6 +117,8 @@ private:
     int score_ = 0;
     int lives_ = 0;
     int levelNumber_ = 1;
+    int nextLifeScore_ = 10000;
+
     float scheduleSeconds_ = 0.0f;
     float frightenedSecondsLeft_ = 0.0f;
     float stateSeconds_ = 0.0f;

@@ -316,6 +316,10 @@ void Game::collectPellet() {
     const bool isFruitTaken = isFruit(taken);
     const int points = powerPellet ? kPowerPelletPoints : (isFruitTaken ? kFruitPoints : kPelletPoints);
     score_ += points;
+    if (score_ >= nextLifeScore_) {
+        ++lives_;
+        nextLifeScore_ += 10000;
+    }
     if (powerPellet || taken == Tile::Pellet) {
         player_.notePelletEaten(taken);
     }
@@ -361,6 +365,10 @@ void Game::checkCollisions() {
         if (ghost.isEdible()) {
             const int points = ghost.pointsValue();
             score_ += points;
+            if (score_ >= nextLifeScore_) {
+                ++lives_;
+                nextLifeScore_ += 10000;
+            }
             ghost.eat();
             Event event;
             event.type = EventType::GhostEaten;
