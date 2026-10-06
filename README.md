@@ -19,7 +19,7 @@ The project follows a **model / view split**:
 | Part | State |
 | --- | --- |
 | Simulation model (maze, player, ghosts, rules, level list, clock) | Done, 98 tests passing |
-| Level file format, level list (`LevelManager`) + one playable level (`levels/level1.txt`) | Done |
+| Level file format, level list (`LevelManager`) + two playable levels (`levels/level1.txt`, `levels/level2.txt`) | Done |
 | Qt Quick / QML view, window, input | **Not started** (needs Qt 6 development packages) |
 | Android packaging | **Not started** |
 | Sound, sprites, score HUD, high-score table | **Not started** |
