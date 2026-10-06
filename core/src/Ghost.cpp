@@ -173,8 +173,12 @@ Direction Ghost::frightenedDirection() const {
     const Direction forbidden = opposite(direction());
     Direction options[3];
     int count = 0;
+    const bool forbidUp = forbidUpwardTurn();
     for (const Direction candidate : kGhostPreference) {
         if (candidate == forbidden) {
+            continue;
+        }
+        if (forbidUp && candidate == Direction::Up) {
             continue;
         }
         if (!canMove(candidate)) {
@@ -208,8 +212,12 @@ Direction Ghost::chooseDirection() const {
     const Direction forbidden = opposite(direction());
     Direction best = Direction::None;
     float bestDistance = 0.0f;
+    const bool forbidUp = forbidUpwardTurn();
     for (const Direction candidate : kGhostPreference) {
         if (candidate == forbidden || !canMove(candidate)) {
+            continue;
+        }
+        if (forbidUp && candidate == Direction::Up) {
             continue;
         }
         const float nx = static_cast<float>(tileX() + dirX(candidate)) + 0.5f;
@@ -227,6 +235,12 @@ Direction Ghost::chooseDirection() const {
         return forbidden;
     }
     return best;
+}
+
+bool Ghost::forbidUpwardTurn() const {
+    const int tx = tileX();
+    const int ty = tileY();
+    return ty == 5 && tx >= 8 && tx <= 11;
 }
 
 }

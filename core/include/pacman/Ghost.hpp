@@ -61,6 +61,7 @@ protected:
 private:
     Vec2 chaseTarget(Vec2 playerPosition, Direction playerDirection, Vec2 blinkyPosition) const;
     Direction frightenedDirection() const;
+    bool forbidUpwardTurn() const;
 
     GhostId id_ = GhostId::Blinky;
     int spawnX_ = 0;
