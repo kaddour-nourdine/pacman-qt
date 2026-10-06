@@ -109,12 +109,14 @@ edge found while writing the docs. No new features, just correctness and proof.
 There is no renderer, so today the game cannot be watched. A tiny console renderer proves the
 model is actually playable and becomes the reference the Qt view is compared against.
 
-- [ ] **Add `tools/pacman_text`** (new CMake subdirectory, no Qt): a program that loads a level,
+- [x] **Add `tools/pacman_text`** (new CMake subdirectory, no Qt): a program that loads a level,
       runs `Engine` at a fixed rate, prints the maze as ASCII with pellets, and draws Pac-Man and
       the ghosts as characters (`@`, `B`, `P`, `I`, `C`), optionally with an event log line per
       frame. Read positions from `Game` only — no gameplay logic in this tool.
-- [ ] **Keyboard input in the tool** (`read`/`poll` on stdin, arrow keys → `requestDirection`)
+      *Done:* added `tools/pacman_text/main.cpp`, integrated into CMake.
+- [x] **Keyboard input in the tool** (`read`/`poll` on stdin, arrow keys → `requestDirection`)
       to prove the input path a Qt view will use.
+      *Done:* arrow keys + WASD, Q to quit.
 - [ ] **Add the reachability validator** as part of the tool or a test target: BFS the level for
       player-reachable pellets, ghost-reachable pellets and player-blocked house. This is the
       check that was done by hand for `level1.txt`.
