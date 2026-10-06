@@ -31,7 +31,9 @@ const char* toString(GhostMode mode) {
     case GhostMode::Frightened:
         return "frightened";
     case GhostMode::Eyes:
-        break;
+        return "eyes";
+    case GhostMode::LeavingHouse:
+        return "leavinghouse";
     }
     return "eyes";
 }
@@ -55,6 +57,7 @@ void Ghost::reset() {
     playerPosition_ = position();
     blinkyPosition_ = position();
     target_ = scatterCorner();
+    released_ = true;
 }
 
 void Ghost::setMode(GhostMode mode) {
@@ -132,6 +135,9 @@ void Ghost::updateTarget(Vec2 playerPosition, Direction playerDirection, Vec2 bl
         break;
     case GhostMode::Eyes:
         target_ = tileCenterOf(spawnX_, spawnY_);
+        break;
+    case GhostMode::LeavingHouse:
+        target_ = tileCenterOf(spawnX_, spawnY_ - 2);
         break;
     }
 }

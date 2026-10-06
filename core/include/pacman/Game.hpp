@@ -93,6 +93,7 @@ private:
     void killPlayer();
     void finishLevel();
     void endGame();
+    void releaseGhostsIfReady();
     float speedFor(const Ghost& ghost) const;
     void pushEvent(Event event);
 
