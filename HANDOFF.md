@@ -9,7 +9,7 @@ holds only the state and the constraints.
 | | |
 | --- | --- |
 | Working directory | `/home/nourdine/Development/pacman-qt` |
-| Version control | **none** — not a git repository, so this file is the only record of decisions |
+| Version control | git (branch master) |
 | Build | clean, no warnings with `-Wall -Wextra -Wpedantic` |
 | Tests | 81 tests, 10 CTest suites, **10/10 passing** |
 | Toolchain used | CMake 4.3.0, g++ (GCC) 16.2.1, Linux, 16 cores |
@@ -43,20 +43,17 @@ holds only the state and the constraints.
 1. **Duplicate ghost markers are silently accepted** — `Level::parse` (`core/src/Level.cpp:231`)
    overwrites an earlier `1`–`4` with a later one instead of failing. The only real defect found
    so far; documented in `docs/level-format.md`, fix listed first in `todo.md` Phase 1.
-2. **No git history.** Committing the current green state is `todo.md` Phase 0 and should
-   happen before any refactoring.
+2. **Git history**: repo initialized; Phase 0/1 work committed. Branch: master.
 3. `Game::checkCollisions` uses tile comparison, not sprite overlap — currently intentional and
    documented (`docs/gameplay-rules.md` §7), revisit only as a deliberate fidelity decision.
-4. Ghost house release timers, frightened flash and the corner turn restriction are arcade
-   behaviours that are *not* implemented (`docs/gameplay-rules.md`, "Differences" section).
+4. Ghost house release timers (pellet-based), frightened flash predicates, and corner turn restriction (level1 house area) are partially/explicitly implemented; see `docs/gameplay-rules.md` "Differences" for current state.
 
 ## Suggested first action tomorrow
 
 ```sh
 cd /home/nourdine/Development/pacman-qt
-git init && printf 'build/\n*.user\n.cache/\n*.apk\nandroid/\n' > .gitignore
-git add -A && git commit -m "Core Pac-Man model, level1, 81 tests, documentation"
+git status && git log --oneline -5
+cmake -S . -B build && cmake --build build -j16 && ctest --test-dir build
 ```
 
-Then pick item 1 from `todo.md` Phase 1, or Phase 3 (`tools/pacman_text`) if you want to
-actually watch the game play — that needs no new dependencies.
+Phase 1 is largely complete. Continue from `todo.md` Phase 2 (LevelManager/level list) or Phase 3 (`tools/pacman_text`) if you want to watch the game run.
