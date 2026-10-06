@@ -303,15 +303,22 @@ void Game::collectPellet() {
     const int x = player_.tileX();
     const int y = player_.tileY();
     const Tile tile = maze_.tileAt(x, y);
-    if (!hasPellet(tile)) {
+    if (!hasPellet(tile) && !isFruit(tile)) {
         return;
     }
 
     const Tile taken = maze_.takePellet(x, y);
+    if (taken == Tile::Empty) {
+        return;
+    }
+
     const bool powerPellet = isPowerPellet(taken);
-    const int points = powerPellet ? kPowerPelletPoints : kPelletPoints;
+    const bool isFruitTaken = isFruit(taken);
+    const int points = powerPellet ? kPowerPelletPoints : (isFruitTaken ? kFruitPoints : kPelletPoints);
     score_ += points;
-    player_.notePelletEaten(taken);
+    if (powerPellet || taken == Tile::Pellet) {
+        player_.notePelletEaten(taken);
+    }
 
     if (powerPellet) {
         frightenedSecondsLeft_ = level_.config().frightenedSeconds;
@@ -327,7 +334,13 @@ void Game::collectPellet() {
     }
 
     Event event;
-    event.type = powerPellet ? EventType::PowerPelletEaten : EventType::PelletEaten;
+    if (powerPellet) {
+        event.type = EventType::PowerPelletEaten;
+    } else if (isFruitTaken) {
+        event.type = EventType::FruitEaten;
+    } else {
+        event.type = EventType::PelletEaten;
+    }
     event.x = x;
     event.y = y;
     event.points = points;

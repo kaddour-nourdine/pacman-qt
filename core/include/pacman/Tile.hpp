@@ -11,6 +11,7 @@ enum class Tile : std::uint8_t {
     PowerPellet,
     Door,
     Tunnel,
+    Fruit,
 };
 
 constexpr bool isWall(Tile tile) {
@@ -37,6 +38,10 @@ constexpr bool hasPellet(Tile tile) {
     return tile == Tile::Pellet || tile == Tile::PowerPellet;
 }
 
+constexpr bool isFruit(Tile tile) {
+    return tile == Tile::Fruit;
+}
+
 constexpr bool isPowerPellet(Tile tile) {
     return tile == Tile::PowerPellet;
 }
@@ -53,6 +58,8 @@ constexpr char tileToChar(Tile tile) {
         return '-';
     case Tile::Tunnel:
         return '_';
+    case Tile::Fruit:
+        return 'F';
     case Tile::Empty:
         break;
     }
@@ -64,7 +71,7 @@ constexpr bool isGhostMarker(char c) {
 }
 
 constexpr bool isMapChar(char c) {
-    return c == ' ' || c == '#' || c == '.' || c == 'o' || c == '-' || c == '_' || c == 'P' || isGhostMarker(c);
+    return c == ' ' || c == '#' || c == '.' || c == 'o' || c == '-' || c == '_' || c == 'P' || c == 'F' || c == 'f' || isGhostMarker(c);
 }
 
 constexpr Tile charToTile(char c) {
@@ -79,6 +86,9 @@ constexpr Tile charToTile(char c) {
         return Tile::Door;
     case '_':
         return Tile::Tunnel;
+    case 'F':
+    case 'f':
+        return Tile::Fruit;
     default:
         break;
     }

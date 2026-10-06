@@ -52,6 +52,8 @@ private:
     int rows_ = 0;
     int pelletsTotal_ = 0;
     int pelletsRemaining_ = 0;
+    int fruitsRemaining_ = 0;
+    int fruitsTotal_ = 0;
 };
 
 }
