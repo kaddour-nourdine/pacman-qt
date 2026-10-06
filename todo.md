@@ -11,13 +11,13 @@ Legend: `[ ]` open · `[x]` done · `[!]` blocked · sizes **S** (< 1 h) / **M**
 
 | | |
 | --- | --- |
-| Model (`core/`) | complete: level parsing, maze rules, player, 4 ghosts, scoring, lives, mode schedule, events, fixed-timestep engine |
-| Level data | one playable level, `levels/level1.txt` (21×21, 170 pellets), format documented |
-| Tests | 81 tests, 10 CTest suites, all passing |
+| Model (`core/`) | complete: level parsing, level list (`LevelManager`), maze rules, player, 4 ghosts, scoring, lives, mode schedule, events, fixed-timestep engine |
+| Level data | one playable level, `levels/level1.txt` (21×21, 170 pellets), format documented; the list API is ready for more |
+| Tests | 98 tests, 11 CTest suites, all passing |
 | Docs | `README.md` + `docs/` (architecture, code tour, gameplay rules, level format, testing) |
 | View | **not started** — Qt 6 development packages are not installed on this machine |
 | Android | **not started** |
-| Git | **repository not initialised yet** |
+| Git | repository initialised, branch `master`, work committed |
 
 Build and test, for reference:
 
@@ -48,6 +48,9 @@ edge found while writing the docs. No new features, just correctness and proof.
 - [x] **Reject duplicate ghost markers** (`core/src/Level.cpp:221-249`). Today a second `2`
       silently wins over the first. Add the check next to the existing duplicate-`P` check and
       a `Level.rejectsDuplicateGhostMarker` test.
+      *Done (this session):* the check and the test now actually exist — the earlier checkbox
+      was premature — and `docs/level-format.md` no longer documents the behaviour as a sharp
+      edge.
 - [x] **Parse every level file in a test** (`tests/TestLevel.cpp`): iterate `levels/` with
       `std::filesystem`, load each file, assert success, assert at least one pellet and exactly
       one `P`. *Done when:* dropping a broken `.txt` into `levels/` fails the `Level` suite.
@@ -68,11 +71,21 @@ edge found while writing the docs. No new features, just correctness and proof.
 
 ## Phase 2 — content and progression (M)
 
-- [ ] **Level list / `LevelManager`** (`core/`): a small class that owns a vector of levels,
+- [x] **Level list / `LevelManager`** (`core/`): a small class that owns a vector of levels,
       picks level *n* for `levelNumber_`, and tells the view the level name. Today
       `Game::beginLevel` replays the same map forever (`Game.cpp:87`).
+      *Done:* `LevelManager` (header + `core/src/LevelManager.cpp`) with `add`, `loadFile`,
+      `loadDirectory` (all `*.txt`, sorted by file name, all-or-nothing), 1-based `levelFor`
+      that wraps, and `nameFor` for the view. `Game` now takes a `LevelManager` **by value**
+      (`Game(Level)` wraps one level, so old behaviour is unchanged), reloads the next level
+      when the `LevelComplete` pause expires (`loadLevel`), exposes `levelName()` and
+      `levelManager()`, and reports `GameOver` when the list is empty. Tests: new `LevelManager`
+      suite (11) plus 3 `Game` tests — 98 tests, 11 suites, green.
 - [ ] **Second real level** (`levels/level2.txt`) that is not a copy: fewer pellets, a tighter
       ghost house, a custom `modeSchedule`. Add it to the parse-everything test.
+      *Note:* `TestLevel.loadsAllLevelFilesInLevelsDirectory` and
+      `LevelManager::loadDirectory` pick up any `.txt` automatically — name it so it sorts
+      after `level1.txt` (`level02.txt`, see `docs/level-format.md`).
 - [ ] **Difficulty curve** expressed in the level files: shorter scatter phases, faster ghosts,
       fewer frightened seconds for later levels. The knobs already exist in `LevelConfig`.
 - [ ] **Fruit / bonus items** (M): a new `Tile` kind, a spawn timer in `Game`, points that

@@ -10,7 +10,7 @@ If you ever wonder "why does the ghost do that?", this is the file to check.
 
 - The board is a grid of tiles. Tile `(x, y)` covers `[x, x+1) × [y, y+1)`; its centre is
   `(x + 0.5, y + 0.5)` (`Vec2.hpp:60`, `tileCenterOf`).
-- `Maze::tileAt` treats anything outside the grid as `Wall` (`Maze.cpp:33`).
+- `Maze::tileAt` treats anything outside the grid as `Wall` (`Maze.cpp:57`).
 - **Tunnels:** `Maze::wrapX` wraps a position from one side to the other *only* in a row whose
   edge tile is `Tunnel` (`Maze.cpp:40`). `Maze::wrapPosition` does the same for a float
   position (`Maze.cpp:99`) and is applied after every movement step, so an entity never leaves
@@ -33,7 +33,7 @@ Implemented once in `Entity::update` (`Entity.cpp:123`) and shared by the player
   nothing and does not clear the request, so the player keeps moving and turns at the next
   opportunity.
 - **Blocked:** with no legal direction, `direction_` becomes `None` and the entity stops dead
-  (`isBlocked()`, `Entity.cpp:37`). It does **not** reverse. (The arcade ghosts reverse; this
+  (`isBlocked()`, `Entity.hpp:37`). It does **not** reverse. (The arcade ghosts reverse; this
   engine deliberately does not, which keeps the player from being pushed around.)
 - **Ghosts reverse** — but only in two cases: when `setMode(Frightened)` or `setMode(Eyes)` is
   called (`Ghost.cpp:60`), and a frightened ghost reverses at every tile centre
@@ -71,17 +71,17 @@ level's spawn markers.
 | `Frightened` | random legal direction, reversing at every centre | `frightenedSpeed` |
 | `Eyes` | shortest path back to the spawn tile, doors allowed | `eyesSpeed` |
 
-Speed selection is `Game::speedFor` (`Game.cpp:193`), with one special case: a ghost standing
+Speed selection is `Game::speedFor` (`Game.cpp:221`), with one special case: a ghost standing
 on a tunnel tile uses `tunnelSpeed` (ghosts visibly slow down in tunnels, like the arcade).
 
 ### Targets
 
-`Ghost::updateTarget` (`Ghost.cpp:119`) sets `target_` from the mode; the mode is set by
-`Game::applyModes` (`Game.cpp:174`), never by the ghost itself.
+`Ghost::updateTarget` (`Ghost.cpp:123`) sets `target_` from the mode; the mode is set by
+`Game::applyModes` (`Game.cpp:202`), never by the ghost itself.
 
-- **Scatter corners** (`Ghost::scatterCorner`, `Ghost.cpp:70`), in maze coordinates:
+- **Scatter corners** (`Ghost::scatterCorner`, `Ghost.cpp:74`), in maze coordinates:
   Blinky top-right, Pinky top-left, Inky bottom-right, Clyde bottom-left.
-- **Chase targets** (`Ghost::chaseTarget`, `Ghost.cpp:86`):
+- **Chase targets** (`Ghost::chaseTarget`, `Ghost.cpp:90`):
   - *Blinky* — the player's tile.
   - *Pinky* — four tiles in front of the player (the direction the player is facing).
   - *Inky* — take the tile two in front of the player, draw the vector from Blinky to it, and
@@ -94,7 +94,7 @@ on a tunnel tile uses `tunnelSpeed` (ghosts visibly slow down in tunnels, like t
 
 ### Choosing a direction at a centre
 
-`Ghost::chooseDirection` (`Ghost.cpp:181`):
+`Ghost::chooseDirection` (`Ghost.cpp:199`):
 
 1. Never reverse (unless nothing else is possible).
 2. Normal modes: among the legal candidates, pick the one whose neighbour tile centre is
@@ -108,7 +108,7 @@ on a tunnel tile uses `tunnelSpeed` (ghosts visibly slow down in tunnels, like t
 
 ## 5. Scatter / chase schedule
 
-`ModeSchedule` (`Game.hpp:30`) turns "how long since the last fright" into "scatter or chase".
+`ModeSchedule` (`Game.hpp:31`) turns "how long since the last fright" into "scatter or chase".
 
 - Default durations: `7, 20, 7, 20, 5, 20, 5, 20` seconds, alternating
   scatter → chase → … (`Game.cpp:27`).
@@ -117,25 +117,25 @@ on a tunnel tile uses `tunnelSpeed` (ghosts visibly slow down in tunnels, like t
 - A level file can override it with `modeSchedule = 1,2` (see
   [`level-format.md`](level-format.md)), which is how the tests run a whole phase in half a
   second.
-- `Game::updateFrightened` (`Game.cpp:162`) only advances `scheduleSeconds_` while no power
+- `Game::updateFrightened` (`Game.cpp:190`) only advances `scheduleSeconds_` while no power
   pellet is active, and eating a power pellet **resets the schedule clock to zero** and forces
-  `Scatter` (`Game.cpp:243`). This reproduces the arcade behaviour where a power pellet
+  `Scatter` (`Game.cpp:202`). This reproduces the arcade behaviour where a power pellet
   interrupts the wave pattern.
 
 ## 6. Power pellets, frightened mode and eating ghosts
 
-- Eating a power pellet (`Game::collectPellet`, `Game.cpp:229`): +50 points, sets
+- Eating a power pellet (`Game::collectPellet`, `Game.cpp:302`): +50 points, sets
   `frightenedSecondsLeft_` to `frightenedSeconds`, resets the schedule, forces scatter, and puts
   every ghost that is not already eyes into `Frightened`.
 - A ghost is *edible* exactly while it is frightened (`Ghost::isEdible`, `Ghost.hpp:35`).
 - Eating a ghost: +200 / 400 / 800 / 1600 points by ghost id (`Ghost::pointsValue`,
-  `Ghost.cpp:139`, table `kPointValues` at `Ghost.cpp:7`). The pellet points of that power
+  `Ghost.cpp:146`, table `kPointValues` at `Ghost.cpp:7`). The pellet points of that power
   pellet are *not* added to the ghost points in this implementation — the arcade adds them.
-- `Ghost::eat()` (`Ghost.cpp:143`) switches the ghost to `Eyes`, clears any queued turn and
+- `Ghost::eat()` (`Ghost.cpp:150`) switches the ghost to `Eyes`, clears any queued turn and
   makes it reverse.
 - While `frightenedSecondsLeft_ > 0`, `applyModes` skips ghosts that are already eyes, so they
   keep heading home even after the fright expires. Once the eyes reach their spawn tile,
-  `Game::moveGhosts` resets them (`Game.cpp:213`) and emits `GhostRespawned`.
+  `Game::moveGhosts` resets them (`Game.cpp:235`) and emits `GhostRespawned`.
 
 ## 7. Scoring and lives
 
@@ -147,25 +147,31 @@ on a tunnel tile uses `tunnelSpeed` (ghosts visibly slow down in tunnels, like t
 
 - Score lives in `Game::score_`, is only ever increased, and is reset by `Game::reset()`.
 - Lives come from `startingLives` (default 3). A collision with a non-frightened ghost in the
-  same tile costs one life (`Game::killPlayer`, `Game.cpp:292`).
+  same tile costs one life (`Game::killPlayer`, `Game.cpp:366`).
 - Collisions are **tile-based**: player and ghost collide when their tile indices are equal
-  (`Game::checkCollisions`, `Game.cpp:263`). Two ghosts passing through each other in opposite
+  (`Game::checkCollisions`, `Game.cpp:337`). Two ghosts passing through each other in opposite
   directions do not interact, and so does a player who is *between* two tiles next to a ghost.
   A pixel-accurate version would need an overlap test instead — a good exercise.
 
 ## 8. Level flow
 
-- `Game::beginLevel` (`Game.cpp:87`) restores all pellets, resets the player and the ghosts,
-  clears timers, sets `state_ = Ready` and emits `LevelStarted`.
-- `Game::start()` (`Game.cpp:107`) moves `Ready → Running`. This is the "get ready" pause of
+- `Game::beginLevel` (`Game.cpp:105`) restores all pellets, resets the player and the ghosts,
+  clears timers, sets `state_ = Ready` and emits `LevelStarted`. With an empty level list it
+  reports `GameOver` instead: there is nothing to play.
+- `Game::start()` (`Game.cpp:133`) moves `Ready → Running`. This is the "get ready" pause of
   the arcade; nothing simulates before it.
 - `allPelletsEaten()` (`Maze::allPelletsEaten`, needs at least one pellet in the level) ends the
-  level: `LevelComplete` for 2 seconds, then `levelNumber_++` and `beginLevel()` again
-  (`Game.cpp:144`).
+  level: `LevelComplete` for 2 seconds, then `levelNumber_++`, `loadLevel` of
+  `levels_.levelFor(levelNumber_)` and `beginLevel()` again (`Game.cpp:171`).
+- `levelFor` wraps past the end of the list, so with one level (today's `levels/level1.txt`)
+  the same maze replays forever, while a full list makes the campaign loop like the arcade.
+- Lives and score carry over between levels; only the constructors and `reset()` apply
+  `startingLives` again. The next level's speeds, frightened seconds and `modeSchedule` take
+  effect as soon as it is loaded, because `loadLevel` rebuilds the schedule from its header.
 - Death flow: `PlayerDied` for `kDeathPauseSeconds` (1.6 s), then either reset the level or,
-  if `lives_ == 0`, `GameOver` (`Game.cpp:125-142`).
-- Every level is currently the **same** maze; `levelNumber_` only counts up. There is no level
-  list yet.
+  if `lives_ == 0`, `GameOver` (`Game.cpp:151-168`).
+- The view reads the label with `game.levelName()` and the number with `game.levelNumber()` —
+  it never tracks the progression itself.
 
 ---
 
@@ -185,7 +191,8 @@ fidelity work remains:
    pause is running.
 7. **The eaten-ghost score does not include the current power pellet bonus**, and the ghost
    eaten counter within one power pellet is not reset explicitly (the fright timer handles it).
-8. **No level-specific layouts or difficulty curve**: `startingLives`, speeds and the schedule
-   are per level *file*, but there is only one file.
+8. **No difficulty curve yet**: `startingLives`, speeds, frightened seconds and the schedule
+   are per level *file*, and `Game` now walks a `LevelManager` list of them — but `levels/`
+   still contains exactly one file, so every level is currently that same maze.
 9. **Extra lives** at score thresholds are not implemented.
 10. **Collisions are per tile**, not per pixel (see §7).

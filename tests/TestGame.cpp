@@ -4,6 +4,7 @@
 #include "TestFramework.hpp"
 #include "pacman/Engine.hpp"
 #include "pacman/Game.hpp"
+#include "pacman/LevelManager.hpp"
 
 using namespace pac;
 
@@ -230,6 +231,86 @@ PAC_TEST(Game, resetRestartsFromBeginning) {
     CHECK_EQ(game.levelNumber(), 1);
     CHECK_EQ(game.pelletsRemaining(), 34);
     CHECK_EQ(game.player().pelletsEaten(), 0);
+}
+
+PAC_TEST(Game, playsLevelsFromTheList) {
+    LevelManager manager;
+    CHECK(manager.add(pactest::makeLevel(pactest::firstRoomMap(), __FILE__, __LINE__)));
+    CHECK(manager.add(pactest::makeLevel(pactest::secondRoomMap(), __FILE__, __LINE__)));
+
+    Game game(manager);
+    game.start();
+    CHECK_EQ(game.levelNumber(), 1);
+    CHECK(game.levelName() == "First Room");
+    CHECK_EQ(game.pelletsRemaining(), 15);
+
+    game.ghosts()[0].setPosition(game.player().position());
+    game.step(0.001f);
+    CHECK_EQ(game.state(), GameState::PlayerDied);
+    CHECK_EQ(game.lives(), 2);
+    game.step(Game::kDeathPauseSeconds + 0.01f);
+    CHECK_EQ(game.state(), GameState::Ready);
+    game.start();
+
+    collectAllPellets(game);
+    CHECK_EQ(game.state(), GameState::LevelComplete);
+    CHECK_EQ(game.score(), 14 * Game::kPelletPoints + Game::kPowerPelletPoints);
+
+    game.step(Game::kLevelCompletePauseSeconds + 0.01f);
+    CHECK_EQ(game.levelNumber(), 2);
+    CHECK(game.levelName() == "Second Room");
+    CHECK_EQ(game.lives(), 2);
+    CHECK_EQ(game.pelletsRemaining(), 12);
+    CHECK_EQ(game.player().pelletsEaten(), 0);
+    CHECK_EQ(game.score(), 14 * Game::kPelletPoints + Game::kPowerPelletPoints);
+
+    game.start();
+    collectAllPellets(game);
+    CHECK_EQ(game.state(), GameState::LevelComplete);
+    game.step(Game::kLevelCompletePauseSeconds + 0.01f);
+    CHECK_EQ(game.levelNumber(), 3);
+    CHECK(game.levelName() == "First Room");
+    CHECK_EQ(game.pelletsRemaining(), 15);
+    CHECK_EQ(game.score(), 25 * Game::kPelletPoints + 2 * Game::kPowerPelletPoints);
+}
+
+PAC_TEST(Game, resetReturnsToFirstLevelOfTheList) {
+    LevelManager manager;
+    CHECK(manager.add(pactest::makeLevel(pactest::firstRoomMap(), __FILE__, __LINE__)));
+    CHECK(manager.add(pactest::makeLevel(pactest::secondRoomMap(), __FILE__, __LINE__)));
+
+    Game game(manager);
+    game.start();
+    collectAllPellets(game);
+    game.step(Game::kLevelCompletePauseSeconds + 0.01f);
+    CHECK_EQ(game.levelNumber(), 2);
+    CHECK(game.levelName() == "Second Room");
+
+    game.reset();
+    CHECK_EQ(game.state(), GameState::Ready);
+    CHECK_EQ(game.levelNumber(), 1);
+    CHECK(game.levelName() == "First Room");
+    CHECK_EQ(game.score(), 0);
+    CHECK_EQ(game.lives(), 3);
+    CHECK_EQ(game.pelletsRemaining(), 15);
+}
+
+PAC_TEST(Game, startsOverWhenTheLevelListIsEmpty) {
+    const LevelManager empty;
+    Game game{empty};
+    CHECK(game.isOver());
+    CHECK(game.levelName().empty());
+    CHECK_EQ(game.levelNumber(), 1);
+    CHECK_EQ(game.score(), 0);
+    CHECK(hasEvent(game.drainEvents(), EventType::GameOver));
+
+    game.start();
+    game.step(1.0f);
+    CHECK(game.isOver());
+
+    game.reset();
+    CHECK(game.isOver());
+    CHECK(hasEvent(game.drainEvents(), EventType::GameOver));
 }
 
 PAC_TEST(Game, ghostsAreReproducibleForSameSeed) {

@@ -230,6 +230,9 @@ bool Level::parse(const std::vector<std::string>& lines, Level& out, std::string
             }
             if (isGhostMarker(c)) {
                 const int index = c - '1';
+                if (ghostSeen[static_cast<std::size_t>(index)]) {
+                    return fail(error, std::string("map has more than one ghost marker '") + c + "'");
+                }
                 GhostSpawn spawn;
                 spawn.x = x;
                 spawn.y = y;

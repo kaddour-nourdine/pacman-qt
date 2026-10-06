@@ -63,28 +63,50 @@ int ModeSchedule::phaseCount() const {
     return static_cast<int>(durations_.size());
 }
 
-Game::Game(Level level)
-    : level_(std::move(level)),
+Game::Game(Level level) : Game(LevelManager(std::vector<Level>{std::move(level)})) {
+}
+
+Game::Game(LevelManager levels)
+    : levels_(std::move(levels)),
+      level_(levels_.levelFor(1)),
       maze_(level_),
       player_(maze_),
       schedule_(level_.config().phaseDurations),
       lives_(level_.config().startingLives) {
+    createGhosts();
+    beginLevel();
+}
+
+void Game::createGhosts() {
+    ghosts_.clear();
     ghosts_.reserve(Level::kGhostCount);
     for (int i = 0; i < Level::kGhostCount; ++i) {
         const GhostSpawn& spawn = level_.ghostSpawn(i);
         ghosts_.emplace_back(maze_, static_cast<GhostId>(i), spawn.x, spawn.y, spawn.direction, &random_);
     }
-    beginLevel();
+}
+
+void Game::loadLevel(const Level& level) {
+    level_ = level;
+    maze_ = Maze(level_);
+    player_ = Player(maze_);
+    createGhosts();
+    schedule_ = ModeSchedule(level_.config().phaseDurations);
 }
 
 void Game::reset() {
     score_ = 0;
-    lives_ = level_.config().startingLives;
     levelNumber_ = 1;
+    loadLevel(levels_.levelFor(1));
+    lives_ = level_.config().startingLives;
     beginLevel();
 }
 
 void Game::beginLevel() {
+    if (levels_.isEmpty()) {
+        endGame();
+        return;
+    }
     maze_.resetPellets();
     player_.reset();
     for (Ghost& ghost : ghosts_) {
@@ -147,6 +169,7 @@ void Game::step(float deltaSeconds) {
 
     if (state_ == GameState::LevelComplete && stateSeconds_ >= kLevelCompletePauseSeconds) {
         ++levelNumber_;
+        loadLevel(levels_.levelFor(levelNumber_));
         beginLevel();
     }
 }

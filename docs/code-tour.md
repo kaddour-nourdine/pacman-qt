@@ -139,12 +139,46 @@ non-`key = value` line as the start of the map. It enforces equal row widths, va
 characters, exactly one `P`, no blank line inside the map, and then walks the grid once,
 recording spawn points and counting pellets. `1`–`4` markers are *not* stored as tiles: the
 tile becomes `Empty` and only the spawn coordinate is kept. Ghosts without a marker get the
-first walkable non-player tile (`Level.cpp:263`).
+first walkable non-player tile (`Level.cpp:267`).
 
 `loadFile` is a thin wrapper: read the file into a vector of lines, call `parse`.
 
 Nothing throws; both entry points return `bool` and fill an error string. That is deliberate:
 a level file is user input, and the view will want to show the error message.
+
+### `core/include/pacman/LevelManager.hpp`
+
+```cpp
+class LevelManager {
+    LevelManager() = default;
+    explicit LevelManager(std::vector<Level> levels);
+    bool add(Level level);                                  // false if the level is not valid
+    bool loadFile(const std::string& path, std::string* error);
+    bool loadDirectory(const std::string& directory, std::string* error);
+    void clear();
+    int levelCount() const;  bool isEmpty() const;  const std::vector<Level>& levels() const;
+    const Level& levelFor(int levelNumber) const;           // 1-based, wraps past the end
+    const std::string& nameFor(int levelNumber) const;      // the label for the view
+};
+```
+
+The campaign: an ordered list of levels plus the rule that turns a *level number* into a
+level. `levelFor` is 1-based and wraps — `levelFor(3)` with two levels is the first one again,
+which is what the arcade does with its campaign. Numbers below 1 clamp to the first level, and
+an empty manager answers with a static invalid `Level` and an empty name, so callers never
+have to null-check.
+
+### `core/src/LevelManager.cpp`
+
+`loadFile` is `Level::loadFile` plus an append. `loadDirectory` is the interesting one: it
+collects every `*.txt` in the directory, **sorts it by file name** (directory iteration order
+is unspecified and the model must be deterministic), parses all of them into a temporary list,
+and only appends the result when every file parsed — one broken file anywhere in `levels/`
+means nothing is loaded, and the error message names the offending file first. Non-`.txt`
+files are ignored; a missing or empty directory is an error.
+
+`add` refuses an invalid level, so an unparsed one cannot poison the list. This is the only
+directory I/O in `core/`; everything else still only ever reads a single level file.
 
 ---
 
@@ -291,7 +325,7 @@ attached, which keeps `Ghost` usable standalone in tests.
 
 ## Layer 6 — the rules
 
-### `ModeSchedule` (`core/include/pacman/Game.hpp:30`)
+### `ModeSchedule` (`core/include/pacman/Game.hpp:31`)
 
 A list of phase durations plus `modeAt(seconds)`, which walks the list subtracting durations
 and returns `Scatter` for even phases and `Chase` for odd ones. The default list is
@@ -300,9 +334,9 @@ level file can override it; `usesCustomSchedule()` lets a future view say so.
 
 ### `Game` (`core/include/pacman/Game.hpp`, `core/src/Game.cpp`)
 
-The orchestrator. Members: `level_`, `maze_`, `player_`, `std::vector<Ghost> ghosts_`,
-`random_`, `schedule_`, the state, the score/lives/level counters, the two timers and the event
-queue.
+The orchestrator. Members: `levels_` (the campaign, a `LevelManager`), `level_` (the level
+being played), `maze_`, `player_`, `std::vector<Ghost> ghosts_`, `random_`, `schedule_`, the
+state, the score/lives/level counters, the two timers and the event queue.
 
 Constants: `kPelletPoints = 10`, `kPowerPelletPoints = 50`, `kDeathPauseSeconds = 1.6f`,
 `kLevelCompletePauseSeconds = 2.0f`.
@@ -311,26 +345,42 @@ Lifecycle methods:
 
 | Method | What it does |
 | --- | --- |
-| `Game(Level)` | build the maze, player, ghosts and schedule, then `beginLevel()` |
-| `reset()` | new game: score 0, full lives, level 1, `beginLevel()` |
-| `beginLevel()` (line 87) | pellets, player and ghosts reset; timers and mode cleared; state `Ready`; emits `LevelStarted` |
-| `start()` (line 107) | `Ready → Running` |
-| `step(dt)` (line 113) | the only clock-facing method: simulate while `Running`, otherwise run the pause timers |
-| `simulate(dt)` (line 150) | fright timers → player → pellets → ghosts → collisions → level complete check |
-| `drainEvents()` (line 331) | hand the accumulated events to the caller, leaving an empty queue |
+| `Game(Level)` (line 66) | wraps a single level in a one-entry `LevelManager` and delegates |
+| `Game(LevelManager)` (line 69) | takes the campaign **by value** — `Game` owns its copy, so nothing can dangle — then builds `level_` from `levelFor(1)`, the maze, the player, the ghosts and the schedule, and calls `beginLevel()` |
+| `createGhosts()` (line 80) | (re)builds the four ghosts from `level_`'s spawn markers |
+| `loadLevel(const Level&)` (line 89) | swaps the current level: reassigns `level_`, rebuilds `maze_`, `player_`, the ghosts and `schedule_`. Score and lives are deliberately untouched |
+| `reset()` (line 97) | new game: score 0, `levelNumber_ = 1`, `loadLevel(levelFor(1))`, full lives, `beginLevel()` |
+| `beginLevel()` (line 105) | empty level list → `endGame()`; otherwise pellets, player and ghosts reset, timers and mode cleared, state `Ready`, emits `LevelStarted` |
+| `start()` (line 133) | `Ready → Running` |
+| `step(dt)` (line 139) | the only clock-facing method: simulate while `Running`, otherwise run the pause timers |
+| `simulate(dt)` (line 177) | fright timers → player → pellets → ghosts → collisions → level complete check |
+| `drainEvents()` (line 405) | hand the accumulated events to the caller, leaving an empty queue |
 
-The private helpers are small and single-purpose: `updateFrightened`, `applyModes`,
-`movePlayer`, `moveGhosts`, `collectPellet`, `checkCollisions`, `killPlayer`, `finishLevel`,
-`endGame`, `speedFor`, `pushEvent`. Read them in that order — it is the order in which they
-affect the game.
+**Level progression.** When the `LevelComplete` pause expires, `step` does `++levelNumber_`,
+`loadLevel(levels_.levelFor(levelNumber_))`, `beginLevel()` (`Game.cpp:171`). With a one-level
+manager — what `Game(Level)` builds — `levelFor` wraps, so the same map replays forever. With a
+full list the game walks the campaign and wraps at the end. Lives and score carry over between
+levels: `startingLives` is applied only by the constructors and by `reset()`, while speeds and
+the mode schedule always come from the level that is now loaded. An empty list means the game
+reports `GameOver` immediately instead of building an unplayable board.
 
-`Game` is non-copyable (`Game.hpp:54`) because it hands out references to its own members;
+`levelName()` is `levels_.nameFor(levelNumber_)` — the label the view shows for the current
+level, and `""` when there is none. `levelManager()` hands the campaign to a level-select
+screen.
+
+The private helpers are small and single-purpose: `createGhosts`, `loadLevel`, `beginLevel`,
+`updateFrightened`, `applyModes`, `movePlayer`, `moveGhosts`, `releaseGhostsIfReady`,
+`collectPellet`, `checkCollisions`, `killPlayer`, `finishLevel`, `endGame`, `speedFor`,
+`pushEvent`. Read them in that order — it is the order in which they affect the game.
+
+`Game` is non-copyable (`Game.hpp:56`) because it hands out references to its own members;
 moving it would invalidate every entity's `maze_` pointer.
 
-Accessors: `state`, `score`, `lives`, `levelNumber`, `globalMode`, `isFrightened`,
-`frightenedSecondsLeft`, `pelletsRemaining`, plus `maze()`, `player()` and `ghosts()` in both
-const and non-const form. The non-const overloads are the seam tests use to teleport the
-player or a ghost; a renderer can use them for interpolation as well.
+Accessors: `state`, `score`, `lives`, `levelNumber`, `levelName`, `levelManager`,
+`globalMode`, `isFrightened`, `frightenedSecondsLeft`, `pelletsRemaining`, plus `maze()`,
+`player()` and `ghosts()` in both const and non-const form. The non-const overloads are the
+seam tests use to teleport the player or a ghost; a renderer can use them for interpolation as
+well.
 
 ---
 
@@ -369,11 +419,12 @@ Described in detail in [`testing.md`](testing.md). In short:
 | --- | --- |
 | `tests/TestFramework.hpp` | registry, assertions, `PAC_TEST`/`CHECK*` macros |
 | `tests/TestMain.cpp` | `registry()`, `runAll()`, `main()` |
-| `tests/Fixtures.hpp` | `MAKE_LEVEL` and six tiny hand-made maps |
+| `tests/Fixtures.hpp` | `MAKE_LEVEL` and eight tiny hand-made maps |
 | `tests/TestPrimitives.cpp` | `Direction`, `Vec2`, `Tile` |
-| `tests/TestLevel.cpp` | parsing, options, every error path, loading `level1.txt` |
+| `tests/TestLevel.cpp` | parsing, options, every error path, duplicate markers, loading `level1.txt` and every file in `levels/` |
+| `tests/TestLevelManager.cpp` | level list order and wrapping, file/directory loading, all-or-nothing failure |
 | `tests/TestMaze.cpp` | geometry, pellets, doors, tunnels, BFS path finding |
 | `tests/TestPlayer.cpp` | movement, turning, blocking, wrapping, counters |
 | `tests/TestGhost.cpp` | targets per personality, tie-breaks, reversal, eyes, determinism |
-| `tests/TestGame.cpp` | pellets, power pellets, collisions, lives, level flow, real level |
+| `tests/TestGame.cpp` | pellets, power pellets, collisions, lives, level flow, the level list, real level |
 | `tests/TestEngine.cpp` | fixed stepping, clamping, time scale, reproducibility |

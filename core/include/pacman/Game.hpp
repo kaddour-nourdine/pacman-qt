@@ -5,6 +5,7 @@
 #include "pacman/Events.hpp"
 #include "pacman/Ghost.hpp"
 #include "pacman/Level.hpp"
+#include "pacman/LevelManager.hpp"
 #include "pacman/Maze.hpp"
 #include "pacman/Player.hpp"
 #include "pacman/Random.hpp"
@@ -50,6 +51,7 @@ public:
     static constexpr float kLevelCompletePauseSeconds = 2.0f;
 
     explicit Game(Level level);
+    explicit Game(LevelManager levels);
 
     Game(const Game&) = delete;
     Game& operator=(const Game&) = delete;
@@ -65,6 +67,8 @@ public:
     int score() const { return score_; }
     int lives() const { return lives_; }
     int levelNumber() const { return levelNumber_; }
+    const std::string& levelName() const { return levels_.nameFor(levelNumber_); }
+    const LevelManager& levelManager() const { return levels_; }
 
     GlobalMode globalMode() const { return globalMode_; }
     float frightenedSecondsLeft() const { return frightenedSecondsLeft_; }
@@ -83,6 +87,8 @@ public:
     std::vector<Event> drainEvents();
 
 private:
+    void createGhosts();
+    void loadLevel(const Level& level);
     void beginLevel();
     void simulate(float deltaSeconds);
     void updateFrightened(float deltaSeconds);
@@ -98,6 +104,7 @@ private:
     float speedFor(const Ghost& ghost) const;
     void pushEvent(Event event);
 
+    LevelManager levels_;
     Level level_;
     Maze maze_;
     Player player_;
