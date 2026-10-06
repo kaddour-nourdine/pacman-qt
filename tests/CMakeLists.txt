@@ -25,3 +25,12 @@ endif()
 foreach(suite Direction Vec2 Tile Level LevelManager Maze Player Ghost Game Engine ModeSchedule)
     add_test(NAME ${suite} COMMAND pacman_tests ${suite})
 endforeach()
+add_executable(pacman_tests_reach TestReachability.cpp TestMain.cpp)
+target_link_libraries(pacman_tests_reach PRIVATE pacman_core)
+target_include_directories(pacman_tests_reach PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_definitions(pacman_tests_reach PRIVATE
+    PACMAN_LEVELS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../levels"
+)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(pacman_tests_reach PRIVATE -Wall -Wextra -Wpedantic)
+endif()
