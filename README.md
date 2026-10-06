@@ -63,7 +63,7 @@ core/                       the model library (no graphics, no Qt)
   include/pacman/           public headers, one per concept
   src/                      implementations
 levels/
-  level1.txt                the playable level, written in a plain ASCII format
+  level1.txt                the playable levels, written in a plain ASCII format
 tests/                      the test suite (98 tests, no external framework)
 docs/                       the documentation you are reading
 ```
