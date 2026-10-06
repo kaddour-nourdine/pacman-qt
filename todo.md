@@ -12,17 +12,19 @@ Legend: `[ ]` open · `[x]` done · `[!]` blocked · sizes **S** (< 1 h) / **M**
 | | |
 | --- | --- |
 | Model (`core/`) | complete: level parsing, level list (`LevelManager`), maze rules, player, 4 ghosts, scoring, lives, mode schedule, events, fixed-timestep engine |
-| Level data | one playable level, `levels/level1.txt` (21×21, 170 pellets), format documented; the list API is ready for more |
-| Tests | 98 tests, 11 CTest suites, all passing |
+| Level data | two playable levels, `levels/level1.txt` and `levels/level2.txt`, format documented |
+| Tests | 99 tests, 11 CTest suites, all passing (plus the `pacman_tests_reach` reachability binary) |
 | Docs | `README.md` + `docs/` (architecture, code tour, gameplay rules, level format, testing) |
-| View | **not started** — Qt 6 development packages are not installed on this machine |
-| Android | **not started** |
+| Tools | `tools/pacman_text` terminal player and `tools/ai_demo` |
+| View | `app/` Qt Quick app — `GameController` bridge, `Canvas`-drawn maze/HUD, keyboard input; audio and headless tests still open |
+| Android | **not started** — Phase 5, blocked on Phase 4 |
 | Git | repository initialised, branch `master`, work committed |
 
 Build and test, for reference:
 
 ```sh
 cmake -S . -B build && cmake --build build -j && ctest --test-dir build --output-on-failure
+cmake -S . -B build -DPACMAN_BUILD_APP=ON && cmake --build build -j   # also build the Qt app
 ./build/tests/pacman_tests Ghost      # one suite
 ```
 
@@ -106,8 +108,9 @@ edge found while writing the docs. No new features, just correctness and proof.
 
 ## Phase 3 — see the game without Qt (M) ← highest value before Phase 4
 
-There is no renderer, so today the game cannot be watched. A tiny console renderer proves the
-model is actually playable and becomes the reference the Qt view is compared against.
+This phase existed because there was no renderer yet and the game could not be watched. A tiny
+console renderer proved the model is actually playable and became the reference the Qt view is
+compared against.
 
 - [x] **Add `tools/pacman_text`** (new CMake subdirectory, no Qt): a program that loads a level,
       runs `Engine` at a fixed rate, prints the maze as ASCII with pellets, and draws Pac-Man and
@@ -126,33 +129,49 @@ model is actually playable and becomes the reference the Qt view is compared aga
       *Done:* added `tools/ai_demo` (simple scripted demo tool) — demonstrates the model runs
       with Engine and input path; existing tests already prove completion.
 
-## Phase 4 — the Qt Quick view (L, blocked)
+## Phase 4 — the Qt Quick view (L, in progress)
 
-**Blocker:** no Qt 6 development packages on this machine (`qmake6` missing). Nothing in the
-model depends on this; the work starts the moment `qt6-base-dev`, `qt6-declarative-dev` and
-`qt6-tools-dev` (plus `qml6-module-*` runtime modules) are installed.
+Qt 6.11 (Quick, QtQuick, QuickControls2 runtime modules) is installed. The app builds with
+`-DPACMAN_BUILD_APP=ON` and runs; keep the option `OFF` by default so `core/` still builds
+anywhere without Qt.
 
-- [ ] Install Qt 6 dev packages, then verify: `cmake --find-package` or a tiny
+- [x] Install Qt 6 dev packages, then verify: `cmake --find-package` or a tiny
       `find_package(Qt6 REQUIRED COMPONENTS Quick)` project configures.
-- [ ] **Add `app/`** with an option `PACMAN_BUILD_APP` (default `OFF` while Qt may be absent, so
+      *Done:* `qt6-qtbase-devel`, `qt6-qtdeclarative-devel` and friends installed; a scratch
+      project with `find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2)` configures.
+- [x] **Add `app/`** with an option `PACMAN_BUILD_APP` (default `OFF` while Qt may be absent, so
       the core still builds anywhere): `qt_add_executable(pacman_app MANUAL_FINALIZATION)`,
       `qt_add_qml_module`, `Qt6::Quick`, `Qt6::QuickControls2`.
-- [ ] **QML ↔ C++ boundary**: a small `GameController` QObject exposed with
+      *Done:* `app/` builds `pacman_app` (QTP0001/QTP0004 set to the new policies; flat `Main.qml`).
+- [x] **QML ↔ C++ boundary**: a small `GameController` QObject exposed with
       `Q_PROPERTY` (state, score, lives, levelName, frightenedSecondsLeft) and invokable slots
       (`requestDirection`, `start`, `reset`). This class is the only place where QML touches the
       model — keep all logic in `core/`.
-- [ ] **Frame loop**: drive `Engine::update(delta)` from a `QQuickWindow`/`QQuickItem`
+      *Done:* `app/GameController.{hpp,cpp}` exposes score/highScore/lives/level/state/paused,
+      maze/item strings, interpolated actor positions and `ghosts`, plus `start`/`reset`/
+      `togglePause`/`requestDirection` and per-`Event` signals.
+- [x] **Frame loop**: drive `Engine::update(delta)` from a `QQuickWindow`/`QQuickItem`
       `update()`/`afterAnimating` callback (or `QTimer` at ~60 Hz), and draw entities using
       `Engine::interpolationAlpha()` to interpolate between the previous and current positions.
-- [ ] **Rendering**: first draw coloured rectangles per tile + circles for the actors (no assets)
+      *Done:* a 16 ms `QTimer` calls `Engine::update`; `GameController` snapshots positions before
+      each update and lerps them by `Engine::interpolationAlpha()` (with a tunnel-wrap snap).
+- [x] **Rendering**: first draw coloured rectangles per tile + circles for the actors (no assets)
       so the pipeline is proven; sprites (`pactex.png`, ghost sheet) come afterwards.
-- [ ] **HUD**: score, high score, lives, level name, "READY!" and "GAME OVER" overlays, driven by
+      *Done:* `Main.qml` draws the maze, pellets, power pellets and fruit on a `Canvas`, plus a
+      Pac-Man wedge and ghost shapes (eyes/frightened states). Sprites are still open.
+- [x] **HUD**: score, high score, lives, level name, "READY!" and "GAME OVER" overlays, driven by
       `GameState` and `Event`s — not by polling for changes.
+      *Done:* HUD bound to properties; `READY!`/`LEVEL CLEAR`/`GAME OVER`/`PAUSED` overlays from
+      `stateName`/`paused`; score popups from the `ghostEaten`/`fruitEaten` signals; high score
+      persisted with `QSettings` in the view layer.
 - [ ] **Audio**: a `SoundPlayer` that reacts to `Event`s (pellet, power pellet, ghost eaten,
       death). Keep all audio code in `app/`.
 - [ ] **Test the view headlessly**: `QT_QPA_PLATFORM=offscreen` with `QTest`, asserting that a
       QML load succeeds and that a key event reaches `player().direction()`.
-- [ ] **Input**: arrows + WASD, and a pause key. Later: swipe gestures for touch.
+      *Partial:* the app starts cleanly under `QT_QPA_PLATFORM=offscreen` (verified manually);
+      no automated `QTest` assertion yet.
+- [x] **Input**: arrows + WASD, and a pause key. Later: swipe gestures for touch.
+      *Done:* arrows/WASD turn, `Space` starts/restarts, `P`/`Esc` pause, `R` resets.
 
 ## Phase 5 — Android (L, blocked on Phase 4)
 

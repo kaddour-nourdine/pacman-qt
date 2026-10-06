@@ -15,7 +15,7 @@ view layer translates platform events into model calls and model state into pixe
 
 ```
         ┌─────────────────────────────────────────────┐
-        │  View (Qt Quick / QML)          — later      │
+        │  View (Qt Quick / QML)      — app/           │
         │                                             │
         │  input  ──────────────►  requestDirection() │
         │  clock  ──────────────►  Engine::update()   │
@@ -24,11 +24,18 @@ view layer translates platform events into model calls and model state into pixe
         └──────────────────────┬──────────────────────┘
                                │  public headers only
         ┌──────────────────────▼──────────────────────┐
-        │  pacman_core (model)        — exists today   │
+        │  pacman_core (model)                        │
         │  Level · Maze · Entity · Player · Ghost ·    │
         │  Game · Engine                              │
         └─────────────────────────────────────────────┘
 ```
+
+The view is `app/`: a `GameController` `QObject` owns the `Engine`, runs a 16 ms `QTimer`, and
+is exposed to QML as a context property named `game`. It is the *only* file that includes both
+Qt and `core/`, so the model stays portable. It does not re-implement rules: it reads the
+player/ghost positions, interpolates them with `Engine::interpolationAlpha()` for smooth
+drawing, forwards key presses as `requestDirection()` calls, and re-emits each drained `Event`
+as a Qt signal (`pelletEaten`, `ghostEaten`, `playerDied`, …) for popups and future sound.
 
 Consequences of the split, all visible in the code:
 

@@ -7,10 +7,10 @@ The project follows a **model / view split**:
 
 - **Model** (`core/`) — the game itself: the maze, Pac-Man, the ghosts, the rules, scoring,
   level parsing, the simulation clock. Pure C++, no graphics, no platform APIs, fully
-  deterministic and unit-tested. This is what exists today.
-- **View** (not written yet) — a Qt Quick / QML front end that reads the model, draws sprites
-  and forwards key presses. Because the model knows nothing about Qt, the same library can be
-  reused on Android unchanged.
+  deterministic and unit-tested.
+- **View** (`app/`) — a Qt Quick / QML front end that reads the model, draws the maze and
+  actors and forwards key presses. A small `GameController` QObject is the only bridge between
+  QML and the model, so `core/` stays Qt-free and can be reused on Android unchanged.
 
 ---
 
@@ -18,15 +18,15 @@ The project follows a **model / view split**:
 
 | Part | State |
 | --- | --- |
-| Simulation model (maze, player, ghosts, rules, level list, clock) | Done, 98 tests passing |
+| Simulation model (maze, player, ghosts, rules, level list, clock) | Done, 99 tests passing |
 | Level file format, level list (`LevelManager`) + two playable levels (`levels/level1.txt`, `levels/level2.txt`) | Done |
-| Qt Quick / QML view, window, input | **Not started** (needs Qt 6 development packages) |
-| Android packaging | **Not started** |
-| Sound, sprites, score HUD, high-score table | **Not started** |
+| Qt Quick / QML view, window, input (`app/`, needs Qt 6) | Done (coloured rectangles + circles, no sprites/audio yet) |
+| Headless terminal renderer (`tools/pacman_text`) | Done |
+| Sprites, sound, Android packaging | **Not started** |
 
-Because there is no renderer yet, the only executable you can run is the test binary.
-The game logic *does* run: `Game.playsRealLevelEndToEnd` plays `levels/level1.txt` for 10
-simulated seconds and checks that pellets get eaten and that the ghosts leave their house.
+The model runs on its own: `Game.playsRealLevelEndToEnd` plays a level for ten simulated
+seconds and checks that pellets get eaten and the ghosts leave their house. To watch it without
+Qt, run the terminal renderer; to run the real view, build the Qt app (below).
 
 ---
 
@@ -45,12 +45,29 @@ Useful variations:
 ```sh
 cmake -S . -B build -DPACMAN_BUILD_TESTS=OFF   # build the core library only
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug   # with debug info and no optimisation
+cmake -S . -B build -DPACMAN_BUILD_APP=ON      # also build the Qt Quick app (needs Qt 6)
 ./build/tests/pacman_tests            # run every test, pretty output
 ./build/tests/pacman_tests Ghost      # run one suite
 ```
 
 `pacman_tests` prints one line per test (`ok` / `FAIL`) and returns a non-zero exit code if
 anything failed, so it also works as a plain command-line tool.
+
+### The Qt app
+
+`app/` is built only with `-DPACMAN_BUILD_APP=ON` (default `OFF`, so the core still builds on a
+machine without Qt). It needs the Qt 6 development packages for **Quick** and
+**QuickControls2**, e.g. on Fedora:
+
+```sh
+sudo dnf install qt6-qtbase-devel qt6-qtdeclarative-devel
+cmake -S . -B build -DPACMAN_BUILD_APP=ON && cmake --build build -j
+./build/app/pacman_app
+```
+
+Controls: arrow keys / WASD to steer, **Space** to start or restart, **P** or **Esc** to pause,
+**R** to reset. For a machine with no display (CI), run it with
+`QT_QPA_PLATFORM=offscreen`.
 
 ---
 
@@ -62,9 +79,15 @@ core/                       the model library (no graphics, no Qt)
   CMakeLists.txt            builds the static library pacman_core (alias pacman::core)
   include/pacman/           public headers, one per concept
   src/                      implementations
+app/                        the Qt Quick view (built only with -DPACMAN_BUILD_APP=ON)
+  GameController.*          the only bridge between QML and the model
+  Main.qml                  the maze, HUD, overlays and keyboard input
+tools/
+  pacman_text/              a terminal renderer you can actually play
+  ai_demo/                  a small scripted run of the engine
 levels/
-  level1.txt                the playable levels, written in a plain ASCII format
-tests/                      the test suite (98 tests, no external framework)
+  level1.txt, level2.txt    the playable levels, written in a plain ASCII format
+tests/                      the test suite (99 tests, no external framework)
 docs/                       the documentation you are reading
 ```
 

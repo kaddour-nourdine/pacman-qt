@@ -1,10 +1,12 @@
 # Testing
 
-The project has 98 tests in 11 suites, all green:
+The project has 99 tests in 11 suites, all green, plus a separate reachability binary:
 
 ```
 $ ctest --test-dir build --output-on-failure
-100% tests passed, 0 tests failed out of 10
+100% tests passed, 0 tests failed out of 11
+$ ./build/tests/pacman_tests_reach
+1/1 passed
 ```
 
 There is no external test framework (no GoogleTest, no Catch2) — just `tests/TestFramework.hpp`
@@ -120,7 +122,7 @@ can run a whole scatter phase (`game.step(0.5f)`) in microseconds and assert on 
 | `Direction` | 4 | opposites, axis deltas, diagonal-to-`None` conversion |
 | `Vec2` | 2 | arithmetic; `tileCenterOf` / `tileIndexOf` round trip |
 | `Tile` | 2 | classification predicates; character ⇄ tile round trip |
-| `Level` | 16 | geometry and markers, header options, defaults, **every error path** (ragged rows, no `P`, two `P`s, duplicate ghost marker, unknown option, bad number, invalid character, blank line in map, empty file, missing file), plus loading the real `level1.txt` and every file in `levels/` |
+| `Level` | 17 | geometry and markers, header options, defaults, **every error path** (ragged rows, no `P`, two `P`s, duplicate ghost marker, unknown option, bad number, invalid character, blank line in map, empty file, missing file), locale-independent number parsing, plus loading the real `level1.txt` and every file in `levels/` |
 | `LevelManager` | 11 | empty list, 1-based picking with wrapping, `nameFor` labels, invalid level rejected, `clear`, loading `level1.txt`, and `loadDirectory`: sorted order, appending, all-or-nothing on a broken file, missing/empty directory |
 | `Maze` | 10 | out-of-bounds as wall, pellets consumed once, level completion, `resetPellets`, doors per actor, tunnel wrapping, pellet-free tunnels, shortest path, path across a tunnel |
 | `Player` | 12 | spawn, partial and whole tiles, exact one tile per second, turn applied at the next centre, ignoring a turn into a wall, stopping at a wall, restarting after a block, tunnel wrap, door blocked, counters, animation phase, reset |
@@ -180,10 +182,13 @@ fail is decoration.
 
 ## What is not covered yet
 
-- **Rendering**: there is no view, so nothing about drawing, input devices or timing on a real
-  display is tested. The first Qt tests will need a headless platform plugin.
-- **Reachability**: "every pellet is reachable by the player, and the house is not" is checked
-  by hand for `level1.txt` and only indirectly by `Game.playsRealLevelEndToEnd`. A BFS
-  validator is on the Phase 3 list in `todo.md`.
+- **The Qt view**: `app/` starts cleanly under `QT_QPA_PLATFORM=offscreen`, but there is no
+  automated `QTest` yet asserting that QML loads and that a key event reaches the player. The
+  rendering itself, input devices and timing on a real display are also untested.
+  - **Note**: Qt suppresses `qWarning` output when stderr is not a terminal. Prefix headless
+    runs with `QT_FORCE_STDERR_LOGGING=1` to see QML warnings.
+- **Reachability**: `tests/TestReachability.cpp` BFS-checks that every pellet is reachable and
+  the house is sealed, for every level. It builds a separate `pacman_tests_reach` binary and is
+  **not yet registered** as a CTest test (add it to `tests/CMakeLists.txt`).
 - **Property-based / fuzz testing**: the parser's rejection paths are tested by hand-written
   cases; generating random maps would find more.

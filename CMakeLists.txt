@@ -25,3 +25,8 @@ option(PACMAN_BUILD_TOOLS "Build tools" ON)
 if(PACMAN_BUILD_TOOLS)
     add_subdirectory(tools)
 endif()
+
+option(PACMAN_BUILD_APP "Build the Qt Quick application" OFF)
+if(PACMAN_BUILD_APP)
+    add_subdirectory(app)
+endif()
