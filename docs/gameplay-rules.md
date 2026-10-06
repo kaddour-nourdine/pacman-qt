@@ -174,20 +174,15 @@ on a tunnel tile uses `tunnelSpeed` (ghosts visibly slow down in tunnels, like t
 Worth knowing so you do not "fix" behaviour that is intentional here, and so you know what
 fidelity work remains:
 
-1. **Ghosts can never be permanently blocked.** There are no per-ghost release timers from
-   the house (in the arcade, ghosts leave the house one at a time); all four start where the
-   level file says and immediately head out.
+1. **Ghost house release timers** are simplified (pellet-based thresholds: Blinky 0, Pinky 30, Inky 60, Clyde 90). Full arcade behavior with LeavingHouse pathing is not fully modeled; ghosts use normal AI once released.
 2. **Any ghost may wander into the house.** Door tiles are walkable for ghosts, and target
    selection does not forbid the house interior. In the arcade only the doorway tiles are
    usable during play. Eyes deliberately do the opposite (they need the door).
 3. **No fruit / bonus items, no bonus life thresholds**, no inter-level cut-scenes.
-4. **No white flashing** near the end of a fright (a `mode == Frightened && secondsLeft < 2`
-   variant could be added in `Ghost::chooseDirection`), and frightened ghosts treat the house
-   as ordinary walkable space — in the arcade they are specifically allowed to hide in there.
-5. **No turn limitation** in the corners: the classic "you cannot turn upwards in the four
-   tiles above the ghost house" rule is not implemented.
+4. **Frightened warning flash** is available via predicates (`Game::frightenedFlash()`, `Ghost::isFrightenedFlashing()`); ghost behavior/visuals can use these.
+5. **Corner turn restriction** prevents upward turns in the tiles above the ghost house door for level1 (ty==5, tx in {8..11}); this is hardcoded for now and not data-driven.
 6. **Frightened time does not stop while the player is dead** or while a level transition
-   pause is running, and no "flashing" warning is shown.
+   pause is running.
 7. **The eaten-ghost score does not include the current power pellet bonus**, and the ghost
    eaten counter within one power pellet is not reset explicitly (the fright timer handles it).
 8. **No level-specific layouts or difficulty curve**: `startingLives`, speeds and the schedule
