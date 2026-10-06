@@ -1,7 +1,8 @@
 #include "pacman/Level.hpp"
 
-#include <cstdlib>
+#include <charconv>
 #include <fstream>
+#include <system_error>
 #include <utility>
 
 namespace pac {
@@ -28,9 +29,11 @@ bool parseFloat(const std::string& text, float& out) {
     if (text.empty()) {
         return false;
     }
-    char* end = nullptr;
-    const float value = std::strtof(text.c_str(), &end);
-    if (end == text.c_str() || *end != '\0') {
+    float value = 0.0f;
+    const char* begin = text.data();
+    const char* end = begin + text.size();
+    const auto result = std::from_chars(begin, end, value);
+    if (result.ec != std::errc() || result.ptr != end) {
         return false;
     }
     out = value;
@@ -41,12 +44,14 @@ bool parseInt(const std::string& text, int& out) {
     if (text.empty()) {
         return false;
     }
-    char* end = nullptr;
-    const long value = std::strtol(text.c_str(), &end, 10);
-    if (end == text.c_str() || *end != '\0') {
+    int value = 0;
+    const char* begin = text.data();
+    const char* end = begin + text.size();
+    const auto result = std::from_chars(begin, end, value);
+    if (result.ec != std::errc() || result.ptr != end) {
         return false;
     }
-    out = static_cast<int>(value);
+    out = value;
     return true;
 }
 

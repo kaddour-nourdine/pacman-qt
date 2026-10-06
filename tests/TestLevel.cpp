@@ -2,6 +2,8 @@
 #include <filesystem>
 #include <vector>
 
+#include <clocale>
+
 #include "Fixtures.hpp"
 #include "TestFramework.hpp"
 #include "pacman/Level.hpp"
@@ -108,6 +110,24 @@ PAC_TEST(Level, rejectsInvalidNumber) {
     CHECK(rejects({"playerSpeed = fast", "#####", "#P..#", "#####"}));
     CHECK(rejects({"startingLives = zero", "#####", "#P..#", "#####"}));
     CHECK(rejects({"modeSchedule = 1,x", "#####", "#P..#", "#####"}));
+}
+
+PAC_TEST(Level, parsesIndependentlyOfNumericLocale) {
+    const char* applied = std::setlocale(LC_NUMERIC, "fr_FR.UTF-8");
+    if (applied == nullptr) {
+        applied = std::setlocale(LC_NUMERIC, "de_DE.UTF-8");
+    }
+    if (applied == nullptr) {
+        return;
+    }
+    const Level level = MAKE_LEVEL("playerSpeed = 7.5",
+                                   "ghostSpeed = 4.25",
+                                   "#####",
+                                   "#P..#",
+                                   "#####");
+    std::setlocale(LC_NUMERIC, "C");
+    CHECK_NEAR(level.config().playerSpeed, 7.5, 1e-6);
+    CHECK_NEAR(level.config().ghostSpeed, 4.25, 1e-6);
 }
 
 PAC_TEST(Level, rejectsInvalidMapCharacter) {
