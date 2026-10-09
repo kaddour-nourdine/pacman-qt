@@ -91,14 +91,26 @@ float Entity::distanceToNextCenter() const {
     const int tx = tileX();
     const int ty = tileY();
     switch (direction_) {
-    case Direction::Right:
-        return (static_cast<float>(tx) + 1.5f) - position_.x;
-    case Direction::Left:
-        return position_.x - (static_cast<float>(tx) - 0.5f);
-    case Direction::Down:
-        return (static_cast<float>(ty) + 1.5f) - position_.y;
-    case Direction::Up:
-        return position_.y - (static_cast<float>(ty) - 0.5f);
+    case Direction::Right: {
+        const float center = static_cast<float>(tx) + 0.5f;
+        const float next = position_.x < center ? center : center + 1.0f;
+        return next - position_.x;
+    }
+    case Direction::Left: {
+        const float center = static_cast<float>(tx) + 0.5f;
+        const float next = position_.x > center ? center : center - 1.0f;
+        return position_.x - next;
+    }
+    case Direction::Down: {
+        const float center = static_cast<float>(ty) + 0.5f;
+        const float next = position_.y < center ? center : center + 1.0f;
+        return next - position_.y;
+    }
+    case Direction::Up: {
+        const float center = static_cast<float>(ty) + 0.5f;
+        const float next = position_.y > center ? center : center - 1.0f;
+        return position_.y - next;
+    }
     case Direction::None:
         break;
     }
