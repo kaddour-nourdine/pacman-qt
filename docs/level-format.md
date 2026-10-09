@@ -155,7 +155,7 @@ Facts worth knowing (all asserted by tests):
 | Clyde `4` | `(11, 7)` — inside the house |
 | Power pellets `o` | `(1, 3)`, `(19, 3)`, `(1, 12)`, `(19, 12)` |
 | Tunnels | `(0, 10)` and `(20, 10)` |
-| Pellets | 174 total (170 `.` + 4 `o`) |
+| Pellets | 159 total (155 `.` + 4 `o`) |
 
 The maze is left-right mirror symmetric apart from the one ghost at `(10, 5)`, which is what
 lets the ghost AI be predictable. Three invariants were checked before the level was accepted:
