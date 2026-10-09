@@ -2,6 +2,7 @@
 
 #include <QElapsedTimer>
 #include <QObject>
+#include <QSettings>
 #include <QString>
 #include <QTimer>
 #include <QVariantList>

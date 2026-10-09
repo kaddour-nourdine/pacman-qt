@@ -16,6 +16,8 @@ qt_add_qml_module(pacman_app
     VERSION 1.0
     QML_FILES
         Main.qml
+    RESOURCES
+        assets.qrc
 )
 
 target_link_libraries(pacman_app PRIVATE
