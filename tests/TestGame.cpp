@@ -405,6 +405,9 @@ PAC_TEST(Game, soakTestInvariants) {
     CHECK(Level::loadFile(path, level, &error));
 
     Game game(level);
+    for (Ghost& ghost : game.ghosts()) {
+        ghost.setReleased(true);
+    }
     Engine engine(game);
     engine.setTimeScale(10.0f);
 
@@ -424,17 +427,54 @@ PAC_TEST(Game, soakTestInvariants) {
             CHECK(pt != Tile::Door);
         }
         for (const auto& ghost : game.ghosts()) {
-            if (ghost.isEyes()) {
-                const float dx = static_cast<float>(ghost.spawnX()) - ghost.position().x;
-                const float dy = static_cast<float>(ghost.spawnY()) - ghost.position().y;
-                const float dist = std::sqrt(dx * dx + dy * dy);
-                if (dist < 100.0f) {
-                }
+            const int gx = ghost.tileX();
+            const int gy = ghost.tileY();
+            if (gx < 0 || gx >= game.maze().cols() || gy < 0 || gy >= game.maze().rows()) {
+                CHECK(false);
+                continue;
             }
+            CHECK(game.maze().tileAt(gx, gy) != Tile::Wall);
         }
         CHECK(game.score() >= 0);
         if (maxScore > 0) {
             CHECK(game.score() <= maxScore);
+        }
+    }
+}
+
+PAC_TEST(Game, ghostsStayOnWalkableTilesAfterMidTileReversal) {
+    Level level;
+    std::string error;
+    const std::string path = std::string(PACMAN_LEVELS_DIR) + "/level1.txt";
+    CHECK(Level::loadFile(path, level, &error));
+
+    Game game(std::move(level));
+    game.setRandomSeed(12345);
+    Engine engine(game);
+    game.start();
+    for (Ghost& ghost : game.ghosts()) {
+        ghost.setReleased(true);
+    }
+
+    for (int step = 0; step < 120; ++step) {
+        engine.update(1.0f / 120.0f);
+    }
+
+    game.player().setPosition(tileCenterOf(1, 3));
+
+    for (int step = 0; step < 40000; ++step) {
+        engine.update(1.0f / 120.0f);
+        if (game.isOver()) {
+            break;
+        }
+        for (const Ghost& ghost : game.ghosts()) {
+            const int gx = ghost.tileX();
+            const int gy = ghost.tileY();
+            if (gx < 0 || gx >= game.maze().cols() || gy < 0 || gy >= game.maze().rows()) {
+                CHECK(false);
+                continue;
+            }
+            CHECK(game.maze().tileAt(gx, gy) != Tile::Wall);
         }
     }
 }
