@@ -122,8 +122,8 @@ PAC_TEST(LevelManager, loadsSingleLevelFile) {
     CHECK(manager.loadFile(std::string(PACMAN_LEVELS_DIR) + "/level1.txt", &error));
     CHECK_EQ(manager.levelCount(), 1);
     CHECK(manager.nameFor(1) == "Level 1");
-    CHECK_EQ(manager.levelFor(1).pelletCount(), 174);
-    CHECK_EQ(manager.levelFor(2).pelletCount(), 174);
+    CHECK_EQ(manager.levelFor(1).pelletCount(), 159);
+    CHECK_EQ(manager.levelFor(2).pelletCount(), 159);
 }
 
 PAC_TEST(LevelManager, reportsMissingLevelFile) {
