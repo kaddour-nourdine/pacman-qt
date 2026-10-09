@@ -164,6 +164,11 @@ void GameController::drainModelEvents() {
             emit levelCompleted();
             break;
         case pac::EventType::GameOver:
+            if (score_ > highScore_) {
+                highScore_ = score_;
+                QSettings().setValue(kHighScoreKey, highScore_);
+                emit highScoreChanged();
+            }
             emit gameOver();
             break;
         }
