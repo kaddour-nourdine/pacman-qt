@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Window
 import QtQuick.Controls
-import QtMultimedia 1.0
+import QtMultimedia
 
 Window {
     id: root
@@ -150,7 +150,12 @@ Window {
                     ctx.restore()
                 }
 
-                property var ghostImage: Qt.createQmlObject('import QtQuick; Image { source: "qrc:/assets/sprites/ghost.svg"; visible: false }', board, "ghostImg")
+                property var ghostImages: [
+                    Qt.createQmlObject('import QtQuick; Image { source: "qrc:/assets/sprites/ghost_red.svg"; visible: false }', board, "ghostImg0"),
+                    Qt.createQmlObject('import QtQuick; Image { source: "qrc:/assets/sprites/ghost_pink.svg"; visible: false }', board, "ghostImg1"),
+                    Qt.createQmlObject('import QtQuick; Image { source: "qrc:/assets/sprites/ghost_cyan.svg"; visible: false }', board, "ghostImg2"),
+                    Qt.createQmlObject('import QtQuick; Image { source: "qrc:/assets/sprites/ghost_orange.svg"; visible: false }', board, "ghostImg3")
+                ]
                 property var frightenedImage: Qt.createQmlObject('import QtQuick; Image { source: "qrc:/assets/sprites/frightened.svg"; visible: false }', board, "frightImg")
                 property var eyesImage: Qt.createQmlObject('import QtQuick; Image { source: "qrc:/assets/sprites/eyes.svg"; visible: false }', board, "eyesImg")
                 function drawGhosts(ctx, c) {
@@ -184,8 +189,8 @@ Window {
                             }
                             continue
                         }
+                        const ghostImage = ghostImages[g.id]
                         if (ghostImage && ghostImage.sourceSize.width > 0) {
-                            const tint = colors[g.id]
                             ctx.drawImage(ghostImage, gx - size/2, gy - size/2, size, size)
                         } else {
                             const r = c * 0.42
@@ -343,13 +348,13 @@ Window {
         SoundEffect {
             id: munchSound
             source: "qrc:/assets/audio/munch.wav"
-            volume: 0.1
+            volume: 0.6
         }
 
         SoundEffect {
             id: powerSound
             source: "qrc:/assets/audio/power.wav"
-            volume: 0.1
+            volume: 0.6
         }
 
         Connections {

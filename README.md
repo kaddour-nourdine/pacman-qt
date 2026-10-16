@@ -9,8 +9,9 @@ The project follows a **model / view split**:
   level parsing, the simulation clock. Pure C++, no graphics, no platform APIs, fully
   deterministic and unit-tested.
 - **View** (`app/`) — a Qt Quick / QML front end that reads the model, draws the maze and
-  actors and forwards key presses. A small `GameController` QObject is the only bridge between
-  QML and the model, so `core/` stays Qt-free and can be reused on Android unchanged.
+  actors (SVG sprites on a `Canvas`, with WAV sound effects) and forwards key presses. A small
+  `GameController` QObject is the only bridge between QML and the model, so `core/` stays
+  Qt-free and can be reused on Android unchanged.
 
 ---
 
@@ -18,11 +19,12 @@ The project follows a **model / view split**:
 
 | Part | State |
 | --- | --- |
-| Simulation model (maze, player, ghosts, rules, level list, clock) | Done, 99 tests passing |
+| Simulation model (maze, player, ghosts, rules, level list, clock) | Done, 100 tests passing |
 | Level file format, level list (`LevelManager`) + two playable levels (`levels/level1.txt`, `levels/level2.txt`) | Done |
-| Qt Quick / QML view, window, input (`app/`, needs Qt 6) | Done (coloured rectangles + circles, no sprites/audio yet) |
+| Qt Quick / QML view, window, input (`app/`, needs Qt 6) | Done (SVG sprites, HUD, sound effects) |
 | Headless terminal renderer (`tools/pacman_text`) | Done |
-| Sprites, sound, Android packaging | **Not started** |
+| Automated headless Qt view test (`tests/test_view.cpp`, `PACMAN_BUILD_QT_TESTS`) | Done (loads QML and checks a key event reaches the controller) |
+| Android packaging | **Not started** |
 
 The model runs on its own: `Game.playsRealLevelEndToEnd` plays a level for ten simulated
 seconds and checks that pellets get eaten and the ghosts leave their house. To watch it without
@@ -46,6 +48,7 @@ Useful variations:
 cmake -S . -B build -DPACMAN_BUILD_TESTS=OFF   # build the core library only
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug   # with debug info and no optimisation
 cmake -S . -B build -DPACMAN_BUILD_APP=ON      # also build the Qt Quick app (needs Qt 6)
+cmake -S . -B build -DPACMAN_BUILD_APP=ON -DPACMAN_BUILD_QT_TESTS=ON   # also build the headless Qt test
 ./build/tests/pacman_tests            # run every test, pretty output
 ./build/tests/pacman_tests Ghost      # run one suite
 ```
@@ -56,11 +59,11 @@ anything failed, so it also works as a plain command-line tool.
 ### The Qt app
 
 `app/` is built only with `-DPACMAN_BUILD_APP=ON` (default `OFF`, so the core still builds on a
-machine without Qt). It needs the Qt 6 development packages for **Quick** and
-**QuickControls2**, e.g. on Fedora:
+machine without Qt). It needs the Qt 6 development packages for **Quick**,
+**QuickControls2** and **Multimedia** (the latter for `SoundEffect`), e.g. on Fedora:
 
 ```sh
-sudo dnf install qt6-qtbase-devel qt6-qtdeclarative-devel
+sudo dnf install qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtmultimedia-devel
 cmake -S . -B build -DPACMAN_BUILD_APP=ON && cmake --build build -j
 ./build/app/pacman_app
 ```
@@ -68,6 +71,11 @@ cmake -S . -B build -DPACMAN_BUILD_APP=ON && cmake --build build -j
 Controls: arrow keys / WASD to steer, **Space** to start or restart, **P** or **Esc** to pause,
 **R** to reset. For a machine with no display (CI), run it with
 `QT_QPA_PLATFORM=offscreen`.
+
+The headless view test (`tests/test_view.cpp`) is built only with `-DPACMAN_BUILD_QT_TESTS=ON`
+(which also requires `PACMAN_BUILD_APP=ON`) and needs the Qt 6 **Test** component. It is
+registered as the `QtView` CTest test and runs under `QT_QPA_PLATFORM=offscreen`: it loads
+`Main.qml` and checks that a key event sent to the window reaches the controller.
 
 ---
 
@@ -80,14 +88,18 @@ core/                       the model library (no graphics, no Qt)
   include/pacman/           public headers, one per concept
   src/                      implementations
 app/                        the Qt Quick view (built only with -DPACMAN_BUILD_APP=ON)
+  CMakeLists.txt            builds the pacman_view library + the thin pacman_app executable
+  main.cpp                  QGuiApplication + QQmlApplicationEngine entry point
   GameController.*          the only bridge between QML and the model
-  Main.qml                  the maze, HUD, overlays and keyboard input
+  Main.qml                  the maze, HUD, overlays, keyboard input and sound effects
+  assets/                   SVG sprites and WAV sound effects (embedded as Qt resources)
 tools/
   pacman_text/              a terminal renderer you can actually play
   ai_demo/                  a small scripted run of the engine
 levels/
   level1.txt, level2.txt    the playable levels, written in a plain ASCII format
-tests/                      the test suite (99 tests, no external framework)
+tests/                      the test suite (100 tests, no external framework)
+  test_view.cpp             optional headless Qt view test (PACMAN_BUILD_QT_TESTS)
 docs/                       the documentation you are reading
 ```
 

@@ -10,18 +10,19 @@ If you ever wonder "why does the ghost do that?", this is the file to check.
 
 - The board is a grid of tiles. Tile `(x, y)` covers `[x, x+1) × [y, y+1)`; its centre is
   `(x + 0.5, y + 0.5)` (`Vec2.hpp:60`, `tileCenterOf`).
-- `Maze::tileAt` treats anything outside the grid as `Wall` (`Maze.cpp:57`).
+- `Maze::tileAt` treats anything outside the grid as `Wall` (`Maze.cpp:63`).
 - **Tunnels:** `Maze::wrapX` wraps a position from one side to the other *only* in a row whose
-  edge tile is `Tunnel` (`Maze.cpp:40`). `Maze::wrapPosition` does the same for a float
-  position (`Maze.cpp:99`) and is applied after every movement step, so an entity never leaves
+  edge tile is `Tunnel` (`Maze.cpp:46`). `Maze::wrapPosition` does the same for a float
+  position (`Maze.cpp:105`) and is applied after every movement step, so an entity never leaves
   the board. In `level1.txt` that is row `y = 10`.
 - **Doors** (`-`) separate the ghost house from the maze. A ghost may pass, the player may not
-  (`Maze::canEnter`, `Maze.cpp:72`, with the flag coming from `Entity::canPassDoors`).
+  (`Maze::canEnter`, `Maze.cpp:78`, with the flag coming from `Entity::canPassDoors`).
+  (`levels/level1.txt` has no door tiles; the rule remains generic).
 - Outside the board counts as a wall, so nobody can ever walk off the edge.
 
 ## 2. Movement
 
-Implemented once in `Entity::update` (`Entity.cpp:123`) and shared by the player and ghosts.
+Implemented once in `Entity::update` (`Entity.cpp:135`) and shared by the player and ghosts.
 
 - Speed is in **tiles per second**. Per step the entity wants to travel `speed × dt` tiles.
 - Movement only happens in straight lines between tile centres.
@@ -36,11 +37,11 @@ Implemented once in `Entity::update` (`Entity.cpp:123`) and shared by the player
   (`isBlocked()`, `Entity.hpp:37`). It does **not** reverse. (The arcade ghosts reverse; this
   engine deliberately does not, which keeps the player from being pushed around.)
 - **Ghosts reverse** — but only in two cases: when `setMode(Frightened)` or `setMode(Eyes)` is
-  called (`Ghost.cpp:60`), and a frightened ghost reverses at every tile centre
-  (`Ghost::onArriveAtCenter`, `Ghost.cpp:152`).
+  called (`Ghost.cpp:64`), and a frightened ghost reverses at every tile centre
+  (`Ghost::onArriveAtCenter`, `Ghost.cpp:166`).
 - Tunnel wrapping is applied automatically by `advance()` (`Entity.cpp:78`), so a ghost can be
   travelling left off the left edge and reappear on the right.
-- Floating point drift is corrected by `snapToNextCenter()` (`Entity.cpp:108`) whenever an
+- Floating point drift is corrected by `snapToNextCenter()` (`Entity.cpp:120`) whenever an
   entity lands on a centre.
 
 ## 3. The player
@@ -89,8 +90,8 @@ on a tunnel tile uses `tunnelSpeed` (ghosts visibly slow down in tunnels, like t
   - *Clyde* — the player's tile when further than 8 tiles away, otherwise his own scatter
     corner, which makes him timid up close.
 - **Frightened** — the target is ignored; direction is random.
-- **Eyes** — the spawn tile, reached by BFS path finding (`Maze::stepToward`,
-  `Maze.cpp:129`) with doors passable.
+  - **Eyes** — the spawn tile, reached by BFS path finding (`Maze::stepToward`,
+    `Maze.cpp:141`) with doors passable.
 
 ### Choosing a direction at a centre
 
@@ -127,7 +128,7 @@ on a tunnel tile uses `tunnelSpeed` (ghosts visibly slow down in tunnels, like t
 - Eating a power pellet (`Game::collectPellet`, `Game.cpp:302`): +50 points, sets
   `frightenedSecondsLeft_` to `frightenedSeconds`, resets the schedule, forces scatter, and puts
   every ghost that is not already eyes into `Frightened`.
-- A ghost is *edible* exactly while it is frightened (`Ghost::isEdible`, `Ghost.hpp:35`).
+- A ghost is *edible* exactly while it is frightened (`Ghost::isEdible`, `Ghost.hpp:36`).
 - Eating a ghost: +200 / 400 / 800 / 1600 points by ghost id (`Ghost::pointsValue`,
   `Ghost.cpp:146`, table `kPointValues` at `Ghost.cpp:7`). The pellet points of that power
   pellet are *not* added to the ghost points in this implementation — the arcade adds them.
@@ -143,13 +144,16 @@ on a tunnel tile uses `tunnelSpeed` (ghosts visibly slow down in tunnels, like t
 | --- | --- |
 | Pellet | 10 (`Game::kPelletPoints`) |
 | Power pellet | 50 (`Game::kPowerPelletPoints`) |
+| Fruit | 100 (`Game::kFruitPoints`) |
 | Blinky / Pinky / Inky / Clyde eaten | 200 / 400 / 800 / 1600 |
 
 - Score lives in `Game::score_`, is only ever increased, and is reset by `Game::reset()`.
 - Lives come from `startingLives` (default 3). A collision with a non-frightened ghost in the
-  same tile costs one life (`Game::killPlayer`, `Game.cpp:366`).
+  same tile costs one life (`Game::killPlayer`, `Game.cpp:387`).
+- Extra lives are awarded every 10 000 points (see `Game::collectPellet`/`checkCollisions`):
+  `nextLifeScore_` starts at 10 000 and is increased by 10 000 each time it is reached.
 - Collisions are **tile-based**: player and ghost collide when their tile indices are equal
-  (`Game::checkCollisions`, `Game.cpp:337`). Two ghosts passing through each other in opposite
+  (`Game::checkCollisions`, `Game.cpp:354`). Two ghosts passing through each other in opposite
   directions do not interact, and so does a player who is *between* two tiles next to a ghost.
   A pixel-accurate version would need an overlap test instead — a good exercise.
 
@@ -163,8 +167,9 @@ on a tunnel tile uses `tunnelSpeed` (ghosts visibly slow down in tunnels, like t
 - `allPelletsEaten()` (`Maze::allPelletsEaten`, needs at least one pellet in the level) ends the
   level: `LevelComplete` for 2 seconds, then `levelNumber_++`, `loadLevel` of
   `levels_.levelFor(levelNumber_)` and `beginLevel()` again (`Game.cpp:171`).
-- `levelFor` wraps past the end of the list, so with one level (today's `levels/level1.txt`)
-  the same maze replays forever, while a full list makes the campaign loop like the arcade.
+- `levelFor` wraps past the end of the list. A single-level manager (what `Game(Level)`
+  builds) therefore replays the same maze forever, while the two-level campaign loops
+  `level1.txt` → `level2.txt` → `level1.txt` like the arcade.
 - Lives and score carry over between levels; only the constructors and `reset()` apply
   `startingLives` again. The next level's speeds, frightened seconds and `modeSchedule` take
   effect as soon as it is loaded, because `loadLevel` rebuilds the schedule from its header.
@@ -184,16 +189,17 @@ fidelity work remains:
 2. **Any ghost may wander into the house.** Door tiles are walkable for ghosts, and target
    selection does not forbid the house interior. In the arcade only the doorway tiles are
    usable during play. Eyes deliberately do the opposite (they need the door).
-3. **No fruit / bonus items yet** (fruit tile and `FruitEaten` event exist in the model, but
-   no timed fruit spawn logic is implemented; no bonus life thresholds yet), no inter-level cut-scenes.
+3. **Fruit / bonus items**: fruit tiles exist (`Tile::Fruit`, `charToTile` accepts `F`/`f`) and `Maze` counts/collects them; `Game::collectPellet` collects fruit and emits `FruitEaten` with `kFruitPoints = 100`. **No timed fruit spawn logic is implemented yet.** No inter-level cut-scenes.
 4. **Frightened warning flash** is available via predicates (`Game::frightenedFlash()`, `Ghost::isFrightenedFlashing()`); ghost behavior/visuals can use these.
-5. **Corner turn restriction** prevents upward turns in the tiles above the ghost house door for level1 (ty==5, tx in {8..11}); this is hardcoded for now and not data-driven.
+5. **Corner turn restriction** prevents upward turns on row 5, columns 8-11 (the row above the ghost house, `Ghost::forbidUpwardTurn`) for level1; this is hardcoded for now and not data-driven.
 6. **Frightened time does not stop while the player is dead** or while a level transition
    pause is running.
 7. **The eaten-ghost score does not include the current power pellet bonus**, and the ghost
    eaten counter within one power pellet is not reset explicitly (the fright timer handles it).
-8. **No difficulty curve yet**: `startingLives`, speeds, frightened seconds and the schedule
-   are per level *file*, and `Game` now walks a `LevelManager` list of them — but `levels/`
-   still contains exactly one file, so every level is currently that same maze.
+8. **Difficulty curve and levels:** `levels/level2.txt` exists with shorter scatter phases,
+   higher ghost speed (`ghostSpeed = 5.5`), and shorter frightened seconds (`frightenedSeconds = 4.0`).
+   `Game` walks the `LevelManager` list, carrying over score and lives between levels; an empty
+   list produces `GameOver`. The next level's tuning (speeds, schedule, frightened seconds)
+   takes effect when loaded.
 9. **Extra lives** at 10 000-point thresholds are implemented (see `Game::collectPellet`/`checkCollisions`).
 10. **Collisions are per tile**, not per pixel (see §7).

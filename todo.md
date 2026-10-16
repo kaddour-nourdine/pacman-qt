@@ -13,18 +13,19 @@ Legend: `[ ]` open · `[x]` done · `[!]` blocked · sizes **S** (< 1 h) / **M**
 | --- | --- |
 | Model (`core/`) | complete: level parsing, level list (`LevelManager`), maze rules, player, 4 ghosts, scoring, lives, mode schedule, events, fixed-timestep engine |
 | Level data | two playable levels, `levels/level1.txt` and `levels/level2.txt`, format documented |
-| Tests | 99 tests, 11 CTest suites, all passing (plus the `pacman_tests_reach` reachability binary) |
+| Tests | 100 core tests, 11 CTest suites, all passing (plus the `pacman_tests_reach` reachability binary and, with `PACMAN_BUILD_QT_TESTS=ON`, the `QtView` suite) |
 | Docs | `README.md` + `docs/` (architecture, code tour, gameplay rules, level format, testing) |
 | Tools | `tools/pacman_text` terminal player and `tools/ai_demo` |
-| View | `app/` Qt Quick app — `GameController` bridge, `Canvas`-drawn maze/HUD, keyboard input; audio and headless tests still open |
+| View | `app/` Qt Quick app — `GameController` bridge, SVG-sprite rendering, sound effects, high score persistence, keyboard input, and a passing headless QTest |
 | Android | **not started** — Phase 5, blocked on Phase 4 |
-| Git | repository initialised, branch `master`, work committed |
+| Git | repository initialised, branch `master`; the Phase 4 sprite/audio work is **uncommitted** in the working tree |
 
 Build and test, for reference:
 
 ```sh
 cmake -S . -B build && cmake --build build -j && ctest --test-dir build --output-on-failure
 cmake -S . -B build -DPACMAN_BUILD_APP=ON && cmake --build build -j   # also build the Qt app
+cmake -S . -B build -DPACMAN_BUILD_APP=ON -DPACMAN_BUILD_QT_TESTS=ON && cmake --build build -j
 ./build/tests/pacman_tests Ghost      # one suite
 ```
 
@@ -36,8 +37,8 @@ cmake -S . -B build -DPACMAN_BUILD_APP=ON && cmake --build build -j   # also bui
       experiment is revertible. Add a `.gitignore` for `build/`, `*.user`, `.cache/`,
       `*.apk`, `android/`, Qt Creator user files.
       *Done when:* `git log` shows one commit and `build/` is ignored.
-- [ ] **Add a `README` badge-free build note**: one line stating that the only executable today
-      is `build/tests/pacman_tests` (this already exists — delete this item if you prefer).
+- [x] **Add a `README` badge-free build note**: done — the README now lists all executables
+      (`pacman_tests`, `pacman_tests_reach`, `pacman_app`, `pacman_text`, `ai_demo`).
 - [ ] Decide on a **code style** and apply it once: either accept the current style or add a
       `.clang-format` and run it over `core/` and `tests/` in a single formatting commit.
       *Done when:* `clang-format --dry-run -Werror` is clean.
@@ -142,7 +143,9 @@ anywhere without Qt.
 - [x] **Add `app/`** with an option `PACMAN_BUILD_APP` (default `OFF` while Qt may be absent, so
       the core still builds anywhere): `qt_add_executable(pacman_app MANUAL_FINALIZATION)`,
       `qt_add_qml_module`, `Qt6::Quick`, `Qt6::QuickControls2`.
-      *Done:* `app/` builds `pacman_app` (QTP0001/QTP0004 set to the new policies; flat `Main.qml`).
+      *Done:* `app/` builds `pacman_app` (QTP0001/QTP0004 set to the new policies; flat
+      `Main.qml`). `GameController` and the QML module are compiled into a `pacman_view` static
+      library so `pacman_app` is a thin `main.cpp` and the headless test can link the same view.
 - [x] **QML ↔ C++ boundary**: a small `GameController` QObject exposed with
       `Q_PROPERTY` (state, score, lives, levelName, frightenedSecondsLeft) and invokable slots
       (`requestDirection`, `start`, `reset`). This class is the only place where QML touches the
@@ -157,19 +160,26 @@ anywhere without Qt.
       each update and lerps them by `Engine::interpolationAlpha()` (with a tunnel-wrap snap).
 - [x] **Rendering**: first draw coloured rectangles per tile + circles for the actors (no assets)
       so the pipeline is proven; sprites (`pactex.png`, ghost sheet) come afterwards.
-      *Done:* `Main.qml` draws the maze, pellets, power pellets and fruit on a `Canvas`, plus a
-      Pac-Man wedge and ghost shapes (eyes/frightened states). Sprites are still open.
+      *Done:* `Main.qml` draws the maze and pellets with fills, and the actors with SVG sprites
+      from `app/assets/sprites/` (Pac-Man, four per-ghost colours, frightened and eyes), so the
+      sprite pipeline is proven. A packed sprite sheet (`pactex.png`) is still open.
 - [x] **HUD**: score, high score, lives, level name, "READY!" and "GAME OVER" overlays, driven by
       `GameState` and `Event`s — not by polling for changes.
       *Done:* HUD bound to properties; `READY!`/`LEVEL CLEAR`/`GAME OVER`/`PAUSED` overlays from
       `stateName`/`paused`; score popups from the `ghostEaten`/`fruitEaten` signals; high score
       persisted with `QSettings` in the view layer.
-- [ ] **Audio**: a `SoundPlayer` that reacts to `Event`s (pellet, power pellet, ghost eaten,
+- [x] **Audio**: a `SoundPlayer` that reacts to `Event`s (pellet, power pellet, ghost eaten,
       death). Keep all audio code in `app/`.
-- [ ] **Test the view headlessly**: `QT_QPA_PLATFORM=offscreen` with `QTest`, asserting that a
-      QML load succeeds and that a key event reaches `player().direction()`.
-      *Partial:* the app starts cleanly under `QT_QPA_PLATFORM=offscreen` (verified manually);
-      no automated `QTest` assertion yet.
+      *Done:* `Main.qml` now has two `SoundEffect`s (`munch.wav` on `PelletEaten`, `power.wav`
+      on `PowerPelletEaten`) driven by the controller's per-`Event` signals; all audio code lives
+      in `app/`. Ghost-eaten and death sounds are still missing.
+- [x] **Test the view headlessly**: `QT_QPA_PLATFORM=offscreen` with `QTest`, asserting that a
+      QML load succeeds and that a key event reaches the player.
+      *Done:* `tests/test_view.cpp` is wired as the `QtView` CTest test behind
+      `PACMAN_BUILD_QT_TESTS=ON`; it links the `pacman_view` library, loads `Main.qml` with
+      `QQmlApplicationEngine`, sends a Right-arrow key event to the window and checks the
+      controller received it. The test runs under `QT_QPA_PLATFORM=offscreen` (set by CTest) and
+      passes.
 - [x] **Input**: arrows + WASD, and a pause key. Later: swipe gestures for touch.
       *Done:* arrows/WASD turn, `Space` starts/restarts, `P`/`Esc` pause, `R` resets.
 

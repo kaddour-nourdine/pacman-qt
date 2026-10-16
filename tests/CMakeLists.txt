@@ -34,3 +34,26 @@ target_compile_definitions(pacman_tests_reach PRIVATE
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(pacman_tests_reach PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+option(PACMAN_BUILD_QT_TESTS "Build Qt view tests" OFF)
+if(PACMAN_BUILD_QT_TESTS AND PACMAN_BUILD_APP)
+    find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Test)
+    qt_add_executable(pacman_qttest
+        test_view.cpp
+    )
+    set_target_properties(pacman_qttest PROPERTIES AUTOMOC ON)
+    target_include_directories(pacman_qttest PRIVATE
+        ${CMAKE_SOURCE_DIR}/app
+        ${CMAKE_SOURCE_DIR}/core/include
+    )
+    target_link_libraries(pacman_qttest PRIVATE
+        pacman_view
+        Qt6::Quick
+        Qt6::Test
+    )
+    qt_import_qml_plugins(pacman_qttest)
+    add_test(NAME QtView COMMAND pacman_qttest)
+    set_tests_properties(QtView PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+    )
+endif()

@@ -1,7 +1,7 @@
 # Level file format
 
 Levels are plain text. They live in `levels/`, are read by `Level::loadFile`
-(`core/src/Level.cpp:294`) and validated by `Level::parse` (`core/src/Level.cpp:154`). There is
+(`core/src/Level.cpp:299`) and validated by `Level::parse` (`core/src/Level.cpp:159`). There is
 no binary format and no asset pipeline: edit the file, rebuild nothing, play.
 
 ```
@@ -30,6 +30,7 @@ key = value
 | ` ` | `Empty` | Open corridor with nothing in it. |
 | `-` | `Door` | The ghost house door. Ghosts may pass, the player may not. |
 | `_` | `Tunnel` | Wraps to the opposite edge. Never contains a pellet. |
+| `F` or `f` | `Fruit` | A bonus fruit (currently exists in the model; spawn timing is not implemented yet). |
 | `P` | *marker* | Where the player starts (exactly one per level). The tile itself becomes `Empty`. |
 | `1` | *marker* | Blinky start (tile becomes `Empty`). |
 | `2` | *marker* | Pinky start. |
@@ -63,7 +64,7 @@ Every key is optional; the defaults come from `LevelConfig` (`core/include/pacma
 
 Notes:
 
-- Values are parsed strictly (`Level.cpp:68`, `applyHeaderEntry`): the whole value must be a
+- Values are parsed strictly (`Level.cpp:73`, `applyHeaderEntry`): the whole value must be a
   number, trailing junk is rejected, and speeds/durations must be positive.
 - Numbers always use a `.` decimal separator, regardless of the user's locale. Parsing uses
   `std::from_chars` rather than `strtof`, because the latter would read `6.0` as "six" under a
@@ -105,7 +106,7 @@ if (!Level::loadFile("levels/level1.txt", level, &error)) {
 ### Ghosts without a marker
 
 If a level omits `1`–`4`, `Level::parse` places the missing ghosts on the first walkable tile
-that is not the player's start, scanning row by row (`Level.cpp:267`) and flagging
+that is not the player's start, scanning row by row (`Level.cpp:285`) and flagging
 `GhostSpawn::fromMap = false` so the caller can tell the difference. Small test levels
 therefore only need a `P`.
 
@@ -120,24 +121,24 @@ playerSpeed = 6.0
 modeSchedule = 7,20,7,20,5,20,5,20
 
 #####################
-#.........P.........#
-#.##.#.###.###.#.##.#
-#o#......#.#......#o#
-#.#.#.#.##.##.#.#.#.#
-#.#.....##1##.....#.#
-#.#.######-######.#.#
-#.#.#### 2 4 ####.#.#
-#.#.####  3  ####.#.#
-#.#.#############.#.#
-_                   _
-#.##.#.###.###.#.##.#
-#o#......#.#......#o#
-#.#.#.#.##.##.#.#.#.#
-#.#...#.##.##.#...#.#
-#.###.#.##.##.#.###.#
 #...................#
-#.####.###.###.####.#
-#.####.###.###.####.#
+#.##.#.###.###.#.##.#
+#o#......#.#......#o#
+#.#.#.####.######.#.#
+#.#.......1.......#.#
+#.#.#####   #####.#.#
+#.#.#### 2 4 ####.#.#
+#.#.      3      .#.#
+#.#.#############.#.#
+_         P         _
+#.###.#.##.##.#.###.#
+#o###.#.##.##.#.###o#
+#.###.#.......#.###.#
+#.###.####.####.###.#
+#.###.####.####.###.#
+#...................#
+#.####.#######.####.#
+#.####.#######.####.#
 #...................#
 #####################
 ```
@@ -147,25 +148,23 @@ Facts worth knowing (all asserted by tests):
 | | |
 | --- | --- |
 | Size | 21 × 21 tiles |
-| Player start | `(10, 1)`, facing left |
-| Ghost house door | `(10, 6)` |
-| Blinky `1` | `(10, 5)` — above the door, with an open tile above it |
-| Pinky `2` | `(9, 7)` — inside the house |
-| Inky `3` | `(10, 8)` — inside the house |
-| Clyde `4` | `(11, 7)` — inside the house |
+| Player start | `(10, 10)`, facing left |
+| Ghost house door | **none** (ghost zone is open in `levels/level1.txt`) |
+| Blinky `1` | `(10, 5)` — above the house area |
+| Pinky `2` | `(9, 7)` — inside the ghost house |
+| Inky `3` | `(10, 8)` — inside the ghost house |
+| Clyde `4` | `(11, 7)` — inside the ghost house |
 | Power pellets `o` | `(1, 3)`, `(19, 3)`, `(1, 12)`, `(19, 12)` |
 | Tunnels | `(0, 10)` and `(20, 10)` |
 | Pellets | 160 total (156 `.` + 4 `o`) |
 
-The maze is left-right mirror symmetric apart from the one ghost at `(10, 5)`, which is what
-lets the ghost AI be predictable. Three invariants were checked before the level was accepted:
+The house interior in `level1.txt` is **not sealed** (no `-` door tiles), so there are no
+"sealed behind door" constraints today and the player can walk into the ghost area. The
+reachability validator (`tests/TestReachability.cpp`) checks that every pellet (and fruit, if
+present) is reachable in each level.
 
-1. Every pellet is reachable by the player (BFS with doors closed).
-2. Every pellet is reachable by a ghost (BFS with doors open).
-3. The house interior is not reachable by the player.
-
-`TestGame.playsRealLevelEndToEnd` re-checks (1)–(3) indirectly on every test run by loading the
-file and simulating 600 frames.
+`levels/level2.txt` is the second campaign level (19×16, one `-` door, 125 pellets); it is
+parsed and checked by the same tests, and demonstrates the `modeSchedule`/speed overrides.
 
 ---
 
@@ -173,7 +172,9 @@ file and simulating 600 frames.
 
 1. Copy `levels/level1.txt` to `levels/mylevel.txt` and edit the map.
 2. Keep every row exactly as wide as the others; use spaces for empty corridor.
-3. Put exactly one `P`. Put the four ghost markers inside the house, behind a `-` door.
+3. Put exactly one `P`. Place the four ghost markers (`1`–`4`); if the level has a ghost house
+   enclosed by walls, put them inside and use `-` door tiles. In `levels/level1.txt` no door
+   is present.
 4. Make the perimeter solid (`#`) except where you want a `_` tunnel — wrapping only happens
    at tunnel tiles, so a gap without `_` is simply a wall to the outside world.
 5. Verify it:

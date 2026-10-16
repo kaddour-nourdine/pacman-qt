@@ -13,9 +13,11 @@ function names are the reliable anchor.
 ### `CMakeLists.txt`
 
 Top-level project. Sets C++17 (`CMAKE_CXX_EXTENSIONS OFF` means strict standard mode),
-defaults to `RelWithDebInfo`, defines the `PACMAN_BUILD_TESTS` option, and adds `core/` and
-`tests/`. It also defines `PACMAN_BUILD_APP` (default `OFF`, so a machine without Qt still
-builds the model) and, when it is `ON`, adds `app/`.
+defaults to `RelWithDebInfo`, defines `PACMAN_BUILD_TESTS`, and adds `core/` then `tools/`.
+It also defines `PACMAN_BUILD_APP` (default `OFF`, so a machine without Qt still builds the
+model) and, when it is `ON`, adds `app/` **before** `tests/` — the optional Qt view test links
+the view library defined in `app/`, so `app/` must be processed first. `tests/` is added last
+and calls `enable_testing()`.
 
 ### `core/CMakeLists.txt`
 
@@ -30,10 +32,33 @@ a shared library or an Android `.so` must be position independent. Warnings
 Builds one executable `pacman_tests` from all `Test*.cpp` files and registers **one CTest test
 per suite** with a `foreach` loop. It also builds `pacman_tests_reach` (the separate
 reachability gate from `TestReachability.cpp`) and passes `PACMAN_LEVELS_DIR` as a compile
-definition so the tests can find `levels/level1.txt`.
+definition so the tests can find `levels/level1.txt`. The optional `PACMAN_BUILD_QT_TESTS`
+option (only if `PACMAN_BUILD_APP` is `ON`) builds `pacman_qttest` from `test_view.cpp` and
+registers it as the `QtView` CTest test with `QT_QPA_PLATFORM=offscreen` in its environment.
 
 > If you add a new suite name, add it to that `foreach` list, otherwise the test will run when
 > you execute `pacman_tests` manually but CTest will never see it.
+
+### `tools/CMakeLists.txt`
+
+Adds the two console tools: `pacman_text` (the playable terminal renderer) and `ai_demo`
+(a scripted run of the engine). Both link only `pacman_core`, so neither pulls in Qt.
+
+### `app/CMakeLists.txt`
+
+Only processed when `PACMAN_BUILD_APP=ON` at the top level. It finds `Qt6 Quick` and
+`QuickControls2` and builds **two targets**:
+
+- `pacman_view` — a static library holding `GameController` plus the QML module. It attaches
+  `Main.qml` with `qt_add_qml_module(URI PacMan ... NO_PLUGIN)` (there are no C++-registered
+  QML types, so no plugin is needed) and embeds the SVG sprites and WAV sounds with
+  `qt_add_resources(... pacman_assets ...)`. The old `app/assets.qrc` file is gone, so a new
+  asset only needs a line in that `FILES` list. `PACMAN_LEVELS_DIR` is passed as a compile
+  definition so the controller can load the campaign.
+- `pacman_app` — a thin `qt_add_executable` wrapping only `main.cpp`, linking `pacman_view`.
+
+Keeping the view in a library lets the headless test (`tests/test_view.cpp`) link exactly the
+same code the app uses, instead of trying to link the executable.
 
 ---
 
@@ -71,9 +96,9 @@ Everything is `constexpr`, so these can be used in compile-time contexts and con
 
 ### `core/include/pacman/Tile.hpp`
 
-`enum class Tile : std::uint8_t { Empty, Wall, Pellet, PowerPellet, Door, Tunnel }` and the
+`enum class Tile : std::uint8_t { Empty, Wall, Pellet, PowerPellet, Door, Tunnel, Fruit }` and the
 predicates the rest of the code uses instead of comparing enum values directly:
-`isWall`, `isWalkable`, `blocksGhost`, `isDoor`, `isTunnel`, `hasPellet`, `isPowerPellet`.
+`isWall`, `isWalkable`, `blocksGhost`, `isDoor`, `isTunnel`, `hasPellet`, `isPowerPellet`, `isFruit`.
 
 It also owns the **text ↔ tile mapping**: `tileToChar`, `charToTile`, `isMapChar`,
 `isGhostMarker`. Keeping this in one header means the level parser, a future level editor and a
@@ -90,7 +115,7 @@ It exists so that frightened-ghost randomness is **seedable and reproducible**. 
 
 ### `core/include/pacman/Events.hpp`
 
-`EventType` (`LevelStarted`, `PelletEaten`, `PowerPelletEaten`, `GhostEaten`,
+`EventType` (`LevelStarted`, `PelletEaten`, `PowerPelletEaten`, `FruitEaten`, `GhostEaten`,
 `GhostRespawned`, `PlayerDied`, `LevelCompleted`, `GameOver`) and the `Event` struct:
 `type`, `x`, `y`, `points`, `value`.
 
@@ -130,7 +155,7 @@ static fallback for out-of-range indices so callers never have to bounds-check.
 
 Two phases.
 
-*Parsing the header* — `applyHeaderEntry` (line 68) maps a key to a config field with strict
+*Parsing the header* — `applyHeaderEntry` (line 73) maps a key to a config field with strict
 conversion: `parseFloat`/`parseInt` use `std::from_chars` and require the entire string to be
 consumed, so `6.0x` or `abc` are errors rather than silently `0`. Positive-value checks are
 next to each key, which keeps the error messages specific
@@ -140,12 +165,12 @@ Qt application installs the user's locale (`fr_FR` uses a decimal comma) a level
 load depending on the machine. See the regression test
 `Level.parsesIndependentlyOfNumericLocale`.
 
-*Parsing the map* — `Level::parse` (line 154) scans rows in order, treating the first
+*Parsing the map* — `Level::parse` (line 159) scans rows in order, treating the first
 non-`key = value` line as the start of the map. It enforces equal row widths, valid
 characters, exactly one `P`, no blank line inside the map, and then walks the grid once,
 recording spawn points and counting pellets. `1`–`4` markers are *not* stored as tiles: the
 tile becomes `Empty` and only the spawn coordinate is kept. Ghosts without a marker get the
-first walkable non-player tile (`Level.cpp:267`).
+first walkable non-player tile (`Level.cpp:285`).
 
 `loadFile` is a thin wrapper: read the file into a vector of lines, call `parse`.
 
@@ -217,15 +242,15 @@ Key functions:
 - `rawTile` — the raw grid lookup that treats out-of-bounds as wall. `tileAt` is the *public*
   version that applies tunnel wrapping first; internally `wrapX` uses `rawTile` to avoid
   infinite recursion.
-- `wrapX` (line 40) — if `x` is off the board, look at the edge tile of that row: only a
+- `wrapX` (line 46) — if `x` is off the board, look at the edge tile of that row: only a
   `Tunnel` permits wrapping, otherwise the coordinate stays off-grid and callers see a wall.
   Vertical off-grid never wraps.
-- `canEnter` (line 72) — the single authority on "may this thing stand on that tile?". Walls
+- `canEnter` (line 78) — the single authority on "may this thing stand on that tile?". Walls
   never. Doors only when `passDoors`.
-- `takePellet` (line 111) — returns the tile that was removed, or `Empty` if there was nothing
+- `takePellet` (line 117) — returns the tile that was removed, or `Empty` if there was nothing
   to remove. Returning the tile (instead of a bool) is what lets `Game` know whether it was a
   power pellet, and it is inherently idempotent: the second call finds nothing.
-- `stepToward` (line 129) — a breadth-first search from `(fromX, fromY)` to the goal, wrapping
+- `stepToward` (line 141) — a breadth-first search from `(fromX, fromY)` to the goal, wrapping
   horizontally and honouring `passDoors`, recording the direction that first reached each tile
   in `parentDirection`. It then walks the parent chain back and returns **only the first step**.
   If start equals goal, or the goal is unreachable, it returns `Direction::None`.
@@ -263,7 +288,7 @@ reallocates the vector) must stay possible.
 
 ### `core/src/Entity.cpp`
 
-`update(deltaSeconds)` (line 123) is the algorithm to understand. It converts the frame into
+`update(deltaSeconds)` (line 135) is the algorithm to understand. It converts the frame into
 `remaining = dt × speed` (a distance in tiles) and then loops:
 
 ```
@@ -309,13 +334,13 @@ helpers. The class adds identity (`id_`), spawn data (`spawnX_/spawnY_/spawnDire
 current `mode_`, the last known `target_`, and a **non-owning pointer to the shared
 `Random`** so frightened choices are seeded by the game.
 
-- `updateTarget(playerPos, playerDir, blinkyPos)` (line 119) recomputes `target_` from the
+- `updateTarget(playerPos, playerDir, blinkyPos)` (line 123) recomputes `target_` from the
   mode. It is called by `Game` every step, before `update`, so the AI always aims at a fresh
   snapshot rather than reading the player's fields itself.
-- `chaseTarget` (line 86) is the four-personality switch documented in
+- `chaseTarget` (line 90) is the four-personality switch documented in
   [`gameplay-rules.md`](gameplay-rules.md) §4. Note it is a pure function of its three
   arguments, which is why `TestGhost` can test every personality without building a game.
-- `chooseDirection` (line 181) implements the selection rules: eyes ask `stepToward`,
+- `chooseDirection` (line 199) implements the selection rules: eyes ask `stepToward`,
   frightened asks `frightenedDirection`, otherwise pick the legal neighbour closest to the
   target with Up/Left/Down/Right tie-breaking. `onArriveAtCenter` reverses frightened ghosts.
 - `eat()` sets `Eyes`, `hasReachedSpawn()` reports arrival home, `reset()` returns the ghost to
@@ -344,7 +369,7 @@ The orchestrator. Members: `levels_` (the campaign, a `LevelManager`), `level_` 
 being played), `maze_`, `player_`, `std::vector<Ghost> ghosts_`, `random_`, `schedule_`, the
 state, the score/lives/level counters, the two timers and the event queue.
 
-Constants: `kPelletPoints = 10`, `kPowerPelletPoints = 50`, `kDeathPauseSeconds = 1.6f`,
+Constants: `kPelletPoints = 10`, `kPowerPelletPoints = 50`, `kFruitPoints = 100`, `kDeathPauseSeconds = 1.6f`,
 `kLevelCompletePauseSeconds = 2.0f`.
 
 Lifecycle methods:
@@ -360,7 +385,7 @@ Lifecycle methods:
 | `start()` (line 133) | `Ready → Running` |
 | `step(dt)` (line 139) | the only clock-facing method: simulate while `Running`, otherwise run the pause timers |
 | `simulate(dt)` (line 177) | fright timers → player → pellets → ghosts → collisions → level complete check |
-| `drainEvents()` (line 405) | hand the accumulated events to the caller, leaving an empty queue |
+| `drainEvents()` (line 426) | hand the accumulated events to the caller, leaving an empty queue |
 
 **Level progression.** When the `LevelComplete` pause expires, `step` does `++levelNumber_`,
 `loadLevel(levels_.levelFor(levelNumber_))`, `beginLevel()` (`Game.cpp:171`). With a one-level
@@ -379,7 +404,7 @@ The private helpers are small and single-purpose: `createGhosts`, `loadLevel`, `
 `collectPellet`, `checkCollisions`, `killPlayer`, `finishLevel`, `endGame`, `speedFor`,
 `pushEvent`. Read them in that order — it is the order in which they affect the game.
 
-`Game` is non-copyable (`Game.hpp:56`) because it hands out references to its own members;
+`Game` is non-copyable (`Game.hpp:57`) because it hands out references to its own members;
 moving it would invalidate every entity's `maze_` pointer.
 
 Accessors: `state`, `score`, `lives`, `levelNumber`, `levelName`, `levelManager`,
@@ -417,11 +442,37 @@ smooth at any refresh rate.
 
 ---
 
+## The tools (`tools/`)
+
+Neither tool contains gameplay logic: they drive `Engine` and only read `Game`, which is
+exactly what the Qt view does. They exist so the model can be watched and fuzzed without Qt.
+
+### `tools/pacman_text/main.cpp` (236 lines)
+
+A terminal renderer you can actually play. It loads the whole `levels/` directory with
+`LevelManager::loadDirectory` (or a single file given on the command line), runs `Engine` at
+a real-time rate, and redraws the board in place with ANSI escape codes: walls, pellets,
+fruit, Pac-Man (`@`) and the ghosts (`B`, `P`, `I`, `C`), plus the score/lives/state line.
+Arrow keys and WASD become `requestDirection` calls; `Q` quits. The terminal is switched to
+raw mode (POSIX `termios`, with a Windows `conio` path behind `#ifdef _WIN32`) and restored
+on exit, including on `SIGINT`. `PACMAN_LEVELS_DIR` is a compile definition here too, so the
+tool finds the levels without being told where the source tree is.
+
+### `tools/ai_demo/ai_demo.cpp`
+
+A scripted sanity run: load `levels/level1.txt`, start the game, step `Engine` at 5× real
+time for 10 000 frames with no input, and print `OK` (or `OVER`). It is a smoke test a human
+can read, and it complements `TestGame.playsRealLevelEndToEnd` by running much longer.
+
+---
+
 ## The application (`app/`)
 
-Built only when `PACMAN_BUILD_APP=ON`. Uses Qt 6 Quick and QuickControls2
-(`qt_add_executable` + `qt_add_qml_module`); the QML module URI is `PacMan` and `Main.qml`
-lives directly in `app/` (a flat layout avoids needing a `qmldir`).
+Built only when `PACMAN_BUILD_APP=ON`. Uses Qt 6 Quick, QuickControls2 and Multimedia
+(`qt_add_library(pacman_view)` + `qt_add_qml_module` + `qt_add_resources`, then a thin
+`qt_add_executable(pacman_app)`); the QML module URI is `PacMan` and `Main.qml` lives directly in
+`app/` (a flat layout avoids needing a `qmldir`). The QML module is built `NO_PLUGIN` because it
+has no C++-registered types.
 
 ### `app/main.cpp`
 
@@ -443,7 +494,9 @@ enters the program:
   `levelNumber`, `levelName`, `pelletsRemaining`, `stateName`, `paused`, `mazeData`, `itemData`,
   `mazeCols/Rows`, `playerX/Y`, `playerMouth`, `playerDirection` and `ghosts`.
 - **Invokable slots**: `start()`, `reset()`, `togglePause()` and `requestDirection(int)` — a
-  thin translation of the four `Direction` values. Nothing here re-implements a rule.
+  thin translation of the four `Direction` values. Nothing here re-implements a rule. A
+  test-only accessor `directionForTest()` exposes the player's queued (requested) direction to
+  the headless QTest, which uses it to confirm a key event arrived.
 - **Frame loop**: a 16 ms `Qt::PreciseTimer` calls `onTick`, which measures real time with a
   `QElapsedTimer` and passes it to `Engine::update`. Before each update it snapshots the player
   and ghost positions; afterwards it exposes `previous + alpha × (current − previous)` using
@@ -455,8 +508,8 @@ enters the program:
   (`x`, `y`, `id`, `eyes`, `edible`, `flashing`) so QML never touches a C++ type.
 - **Events**: every `Event` drained from `Game` becomes a Qt signal — `levelStarted`,
   `pelletEaten`, `powerPelletEaten`, `fruitEaten`, `ghostEaten`, `ghostRespawned`,
-  `playerDied`, `levelCompleted`, `gameOver` — which the QML side uses for popups and, later,
-  sound. This is the mechanism `architecture.md` §6 describes.
+  `playerDied`, `levelCompleted`, `gameOver` — which the QML side uses for popups and for
+  sound effects. This is the mechanism `architecture.md` §6 describes.
 - **Persistence**: the high score is read/written with `QSettings`. This is a *view* concern,
   which is why the model has no file I/O.
 - **Pause**: `togglePause()` sets the engine time scale to `0` or `1` (only while `Running`).
@@ -465,13 +518,17 @@ enters the program:
 
 The window (640×760, black). A root `Column` takes focus and handles `Keys.onPressed`
 (arrows/WASD → `game.requestDirection(...)`, `Space`/`Return` → `start()`, `P`/`Esc` →
-`togglePause()`, `R` → `reset()`). Below a small HUD (score, high score, level name and lives
-as circles) an `Item` holds a `Canvas` that repaints on `mazeChanged`/`itemsChanged`/
-`actorsChanged`/`stateChanged`. The `Canvas` draws the maze, pellets, fruit, Pac-Man (with a
-mouth angle from `playerMouth`) and the ghosts (colour by id, blue/white when frightened,
-eyes-only when eaten). Overlays show `READY!`, `LEVEL CLEAR`, `GAME OVER`, `PAUSED` and
+`togglePause()`, `R` → `reset()`). Below a small HUD (score, high score, level name, and lives
+shown as `life.svg` images) an `Item` holds a `Canvas` that repaints on `mazeChanged`/
+`itemsChanged`/`actorsChanged`/`stateChanged`. The `Canvas` draws the maze and pellets with
+plain fills, and the actors with SVG sprites loaded as `Image` objects: Pac-Man
+(`pacman.svg`, with a mouth wedge from `playerMouth`), one ghost sprite per id
+(`ghost_red.svg`, `ghost_pink.svg`, `ghost_cyan.svg`, `ghost_orange.svg`), `frightened.svg`
+when frightened and `eyes.svg` when eaten. Overlays show `READY!`, `LEVEL CLEAR`, `GAME OVER`, `PAUSED` and
 `NO LEVELS FOUND` from `stateName`. A `Connections` block turns the controller's signals into a
-floating score popup with a `NumberAnimation`.
+floating score popup with a `NumberAnimation`. Two `SoundEffect`s (`munch.wav`, `power.wav`)
+are played from the `pelletEaten` and `powerPelletEaten` signals — this is the `app/`-side
+audio that `architecture.md` §8 describes as the extension point for sound.
 
 ---
 
@@ -492,3 +549,5 @@ Described in detail in [`testing.md`](testing.md). In short:
 | `tests/TestGhost.cpp` | targets per personality, tie-breaks, reversal, eyes, determinism |
 | `tests/TestGame.cpp` | pellets, power pellets, collisions, lives, level flow, the level list, real level |
 | `tests/TestEngine.cpp` | fixed stepping, clamping, time scale, reproducibility |
+| `tests/TestReachability.cpp` | separate `pacman_tests_reach` binary: BFS that every pellet/fruit is reachable in every `levels/*.txt` |
+| `tests/test_view.cpp` | optional `QtView` QTest (only with `PACMAN_BUILD_QT_TESTS=ON`): QML loads and a key event reaches the controller |
