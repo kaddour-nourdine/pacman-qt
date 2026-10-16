@@ -1,12 +1,15 @@
 # Testing
 
-The project has 99 tests in 11 suites, all green, plus a separate reachability binary:
+The project has 100 tests in 11 suites, all green, plus a separate reachability binary and an
+optional Qt view suite:
 
 ```
-$ ctest --test-dir build --output-on-failure
+$ ctest --test-dir build --output-on-failure            # default build
 100% tests passed, 0 tests failed out of 11
 $ ./build/tests/pacman_tests_reach
 1/1 passed
+$ ctest --test-dir build --output-on-failure            # with -DPACMAN_BUILD_QT_TESTS=ON
+100% tests passed, 0 tests failed out of 12             # adds the QtView suite
 ```
 
 There is no external test framework (no GoogleTest, no Catch2) — just `tests/TestFramework.hpp`
@@ -127,7 +130,7 @@ can run a whole scatter phase (`game.step(0.5f)`) in microseconds and assert on 
 | `Maze` | 10 | out-of-bounds as wall, pellets consumed once, level completion, `resetPellets`, doors per actor, tunnel wrapping, pellet-free tunnels, shortest path, path across a tunnel |
 | `Player` | 12 | spawn, partial and whole tiles, exact one tile per second, turn applied at the next centre, ignoring a turn into a wall, stopping at a wall, restarting after a block, tunnel wrap, door blocked, counters, animation phase, reset |
 | `Ghost` | 14 | spawn positions, point values, scatter corners, all four chase targets, tie-break preference, moving towards a target, reversal on fright, deterministic frightened choice, eyes pathing through the door, reset, `toString` |
-| `Game` | 17 | ready-and-frozen, pellet collection and events, power pellet frightens ghosts, fright ending and schedule resumption, eating a ghost, eyes respawn, collision kills, game over after three lives, level completion and level 2, full reset, walking the `LevelManager` list (advance, wrap, lives carrying over, `reset` back to level 1, empty list ⇒ game over), seed reproducibility, the real level end to end |
+| `Game` | 18 | ready-and-frozen, pellet collection and events, power pellet frightens ghosts, fright ending and schedule resumption, eating a ghost, eyes respawn, collision kills, game over after three lives, level completion and level 2, full reset, walking the `LevelManager` list (advance, wrap, lives carrying over, `reset` back to level 1, empty list ⇒ game over), seed reproducibility, the real level end to end, state names, soak test invariants, ghosts stay on walkable tiles after mid-tile reversal |
 | `Engine` | 8 | fixed step size, partial-step accumulation, long-frame clamping, time scale, ignoring non-positive frames, no simulation while `Ready`, real-time driving, reproducibility with jittered frame times |
 | `ModeSchedule` | 2 | default alternation, custom durations |
 
@@ -146,7 +149,7 @@ depend on how fast the player would have walked there.
 of `0.001` tiles/second (`modeMap`) nothing visibly moves, so the test isolates one rule.
 
 **Extract the event you care about.** `hasEvent(game.drainEvents(), EventType::GhostEaten)` in
-`TestGame.cpp:12` checks a queue without caring about the others. `drainEvents()` empties the
+`TestGame.cpp:13` checks a queue without caring about the others. `drainEvents()` empties the
 queue, so tests stay independent — `CHECK(game.drainEvents().empty())` verifies that.
 
 **Reproducibility instead of exact expected values.** `TestEngine.isReproducible` runs two
@@ -182,13 +185,16 @@ fail is decoration.
 
 ## What is not covered yet
 
-- **The Qt view**: `app/` starts cleanly under `QT_QPA_PLATFORM=offscreen`, but there is no
-  automated `QTest` yet asserting that QML loads and that a key event reaches the player. The
-  rendering itself, input devices and timing on a real display are also untested.
+- **The Qt view**: a headless `QTest` (`tests/test_view.cpp`) is wired via
+  `PACMAN_BUILD_QT_TESTS=ON` and registered as the `QtView` CTest test. It links the `pacman_view`
+  library, loads `Main.qml` with `QQmlApplicationEngine`, sends a Right-arrow key event to the
+  window and asserts the controller received it (the turn is queued, so it checks the player's
+  *requested* direction). It runs under `QT_QPA_PLATFORM=offscreen` (set on the test by CTest)
+  and passes. Still untested: the rendered output, input devices and timing on a real display.
   - **Note**: Qt suppresses `qWarning` output when stderr is not a terminal. Prefix headless
     runs with `QT_FORCE_STDERR_LOGGING=1` to see QML warnings.
-- **Reachability**: `tests/TestReachability.cpp` BFS-checks that every pellet is reachable and
-  the house is sealed, for every level. It builds a separate `pacman_tests_reach` binary and is
+- **Reachability**: `tests/TestReachability.cpp` BFS-checks that every pellet (and fruit, if
+  present) is reachable, for every level. It builds a separate `pacman_tests_reach` binary and is
   **not yet registered** as a CTest test (add it to `tests/CMakeLists.txt`).
 - **Property-based / fuzz testing**: the parser's rejection paths are tested by hand-written
   cases; generating random maps would find more.

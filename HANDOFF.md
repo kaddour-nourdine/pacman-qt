@@ -11,11 +11,12 @@ holds only the state and the constraints.
 | Working directory | `/home/nourdine/Development/pacman-qt` |
 | Version control | git (branch master) |
 | Build | clean, no warnings with `-Wall -Wextra -Wpedantic` |
-| Tests | 99 tests, 11 CTest suites, **11/11 passing** (plus `pacman_tests_reach`) |
+| Tests | 100 core tests, 11 CTest suites, **11/11 passing** (plus `pacman_tests_reach` and, with `PACMAN_BUILD_QT_TESTS=ON`, the `QtView` suite: **12/12 passing**) |
 | Toolchain used | CMake 4.3.0, g++ (GCC) 16.2.1, Linux, 16 cores |
 | Qt | **6.11 installed** (`qt6-qtbase-devel`, `qt6-qtdeclarative-devel`); QtQuick/QtQuick.Window/Controls runtime modules present |
-| View | `app/` builds with `-DPACMAN_BUILD_APP=ON`; runs under `QT_QPA_PLATFORM=offscreen` |
-| Last verified commands | `cmake -S . -B build -DPACMAN_BUILD_APP=ON && cmake --build build -j16 && ctest --test-dir build` |
+| View | `app/` builds with `-DPACMAN_BUILD_APP=ON`; the `GameController` + QML module live in a `pacman_view` static library, `pacman_app` is a thin `main.cpp`; runs under `QT_QPA_PLATFORM=offscreen`; draws SVG sprites and plays WAV sound effects |
+| Working tree | **uncommitted Phase 4 work in progress** (`git status` shows modified `CMakeLists.txt`, `app/CMakeLists.txt`, `app/GameController.hpp`, `app/Main.qml`, `tests/CMakeLists.txt`; deleted `app/assets.qrc`; new SVG sprites and `tests/test_view.cpp`) |
+| Last verified commands | `cmake -S . -B build -DPACMAN_BUILD_APP=ON -DPACMAN_BUILD_QT_TESTS=ON && cmake --build build -j16 && ctest --test-dir build` |
 
 `build/` exists and is current, so a rebuild is incremental.
 
@@ -42,10 +43,15 @@ holds only the state and the constraints.
   scripted demo. Both drive `Engine` and only read `Game`.
 - `app/` — the Qt Quick view (`PACMAN_BUILD_APP`, default `OFF`): `GameController` is the only
   bridge to the model (Q_PROPERTY + invokable slots + per-`Event` signals); `Main.qml` draws the
-  maze/actors on a `Canvas`, shows the HUD/overlays, and handles keys.
+  maze/actors on a `Canvas` using the SVG sprites in `app/assets/sprites/`, shows the
+  HUD/overlays, handles keys, and plays the WAV effects in `app/assets/audio/` (`munch.wav` on
+  `PelletEaten`, `power.wav` on `PowerPelletEaten`). `GameController` and the QML module are
+  compiled into a `pacman_view` static library, so the headless test can link the same view.
 - `tests/` — custom harness, no external dependency; `tests/TestLevelManager.cpp` covers the
   loader (temp directories, all-or-nothing, sorted directory scan) and `tests/TestReachability.cpp`
-  is a separate binary that BFS-checks every level.
+  is a separate binary that BFS-checks every level. `tests/test_view.cpp` is a headless `QTest`
+  (only built with `PACMAN_BUILD_QT_TESTS=ON`) that links `pacman_view`, loads `Main.qml` and
+  checks a key event reaches the controller; it passes under `QT_QPA_PLATFORM=offscreen`.
 - `README.md`, `docs/{architecture,code-tour,gameplay-rules,level-format,testing}.md`, `todo.md`.
 
 ## Open items carried over
@@ -61,8 +67,10 @@ holds only the state and the constraints.
    restriction are partially/explicitly implemented; see `docs/gameplay-rules.md` "Differences".
 5. Known quirk: `Ghost::forbidUpwardTurn()` forbids Up entirely at the spawn tile row, so Blinky
    may bounce back into the house in `level1.txt` — verified by inspection, not yet fixed.
-6. Phase 4 remaining work: audio (`SoundPlayer` on `Event`s), a `QTest` headless assertion that a
-   key event reaches `player().direction()`, and sprite rendering.
+6. Phase 4 remaining work: the headless `QTest` (`tests/test_view.cpp`) now builds and passes,
+   and sprites, high-score persistence and basic sound effects are implemented. What remains is
+   marking the Phase 4 checkboxes in `todo.md` (leaving only the packed sprite sheet, plus the
+   ghost-eaten/death sounds, as open sub-items), committing the working tree, then Phase 5.
 
 ## Suggested first action next session
 
@@ -73,5 +81,6 @@ cmake -S . -B build -DPACMAN_BUILD_APP=ON && cmake --build build -j16 && ctest -
 QT_QPA_PLATFORM=offscreen ./build/app/pacman_app    # quick smoke run
 ```
 
-Phases 1–3 are complete and Phase 4 is under way. Continue from the remaining Phase 4 items in
-`todo.md` (audio, headless `QTest`, sprites), then Phase 5 (Android).
+Phases 1–3 are complete and Phase 4 is essentially done: sprites, sound, high-score persistence
+and the headless view test are all in place. The remaining work is to mark the Phase 4 checkboxes
+in `todo.md`, commit the working tree, and then move on to Phase 5 (Android).

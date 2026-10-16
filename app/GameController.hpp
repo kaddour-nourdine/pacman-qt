@@ -112,4 +112,7 @@ private:
     int pelletsRemaining_ = -1;
     int highScore_ = 0;
     bool paused_ = false;
+
+public:
+    int directionForTest() const { return static_cast<int>(game_.player().requestedDirection()); }
 };

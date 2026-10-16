@@ -48,7 +48,7 @@ Consequences of the split, all visible in the code:
   The model decides whether and when the turn actually happens (see §4). This is what allows
   the authentic "queued turn" behaviour of the arcade game.
 - `Game` hands out mutable references to the player and the ghosts
-  (`Game.hpp:81`, `Game.hpp:83`). That is a deliberate seam for tests and for the future view,
+  (`Game.hpp:82`, `Game.hpp:84`). That is a deliberate seam for tests and for the future view,
   but production code should prefer the read-only accessors.
 
 ---
@@ -141,10 +141,10 @@ understanding before reading `Entity.cpp`.
 
 Consequences that the code depends on:
 
-- `Entity::update` loops instead of jumping tile to tile (`Entity.cpp:129`), so a large
+- `Entity::update` loops instead of jumping tile to tile (`Entity.cpp:135`), so a large
   `deltaSeconds` (a long frame, a test stepping 0.5 s, a fast speed) still yields correct
   turning behaviour.
-- `snapToNextCenter()` (`Entity.cpp:108`) fixes floating-point drift by snapping the moving
+- `snapToNextCenter()` (`Entity.cpp:120`) fixes floating-point drift by snapping the moving
   axis exactly onto the centre once it is reached.
 - Speeds are tiles per second, so `dt × speed` is a distance in tiles and
   `distanceTravelled()` (used for the mouth animation) is a real distance.
@@ -162,7 +162,7 @@ Consequences that the code depends on:
 This is why a level can restart without re-parsing the file (`Maze::resetPellets`,
 `Maze.cpp:22`) and why tests can ask "how many pellets are left?" cheaply.
 
-Who may enter what (`Maze::canEnter`, `Maze.cpp:72`):
+Who may enter what (`Maze::canEnter`, `Maze.cpp:78`):
 
 | Tile | Player | Ghost |
 | --- | --- | --- |
@@ -172,13 +172,13 @@ Who may enter what (`Maze::canEnter`, `Maze.cpp:72`):
 | `Door` | **no** | yes |
 
 The single flag `passDoors` encodes the last row. `Entity::canPassDoors()` returns `false`
-for the player and `true` for ghosts (`Ghost.hpp:52`). In `levels/level1.txt` the house
-interior is sealed by walls on every side except the door at `(10, 6)`, so the ghosts *do*
-leave through the door, while the player can never follow them in. The flag is also what lets
-eaten ghosts (eyes) path back through that same door.
+for the player and `true` for ghosts (`Ghost.hpp:59`). In a level that uses doors (like
+`levels/level2.txt`) the player is stopped at the doorway while the ghosts pass through;
+`levels/level1.txt` has no door tiles, so its ghost area is open to everyone. The flag is also
+what lets eaten ghosts (eyes) path back through a door.
 
 Horizontal wrapping is data-driven: `Maze::wrapX` only wraps when the edge tile of that row
-is a `Tunnel` (`Maze.cpp:40`). `level1.txt` has a tunnel row, so the maze is a torus in that
+is a `Tunnel` (`Maze.cpp:46`). `level1.txt` has a tunnel row, so the maze is a torus in that
 row only; every other row behaves like a normal rectangle. `tileAt` therefore never needs a
 special case for the left/right edges.
 
@@ -186,7 +186,7 @@ special case for the left/right edges.
 
 ## 6. Game states and events
 
-`Game::state_` is a small state machine (`Game.hpp:14`):
+`Game::state_` is a small state machine (`Game.hpp:15`):
 
 ```
              start()
@@ -207,10 +207,10 @@ The view is not supposed to infer what happened by comparing two frames. The mod
 it: every interesting moment is pushed into an `Event` (`Events.hpp`) with the coordinates
 and the points involved:
 
-`LevelStarted`, `PelletEaten`, `PowerPelletEaten`, `GhostEaten`, `GhostRespawned`,
+`LevelStarted`, `PelletEaten`, `PowerPelletEaten`, `FruitEaten`, `GhostEaten`, `GhostRespawned`,
 `PlayerDied`, `LevelCompleted`, `GameOver`.
 
-The view drains them once per frame with `drainEvents()` (`Game.cpp:405`) and turns them into
+The view drains them once per frame with `drainEvents()` (`Game.cpp:426`) and turns them into
 a sound, a score popup or a sprite flash. `swap` in `drainEvents` is what makes it cheap:
 the queue is handed over empty and a fresh one is left behind. On `LevelStarted` the view
 reads `levelNumber()` and `levelName()`; it never has to keep its own copy of "which level am
@@ -237,7 +237,7 @@ reproducible:
 
 Floating point is exact enough for this: positions are `float`, the "am I on a centre?"
 check uses a tolerance of `1e-4` (`Entity.cpp:10`) and positions are snapped when they land
-(`Entity.cpp:108`).
+(`Entity.cpp:120`).
 
 ---
 
@@ -249,8 +249,8 @@ The design leaves a few obvious seams for work that has not been done yet:
 | --- | --- |
 | More levels / a difficulty curve | drop `levelN.txt` into `levels/` and let `LevelManager::loadDirectory` pick it up; the knobs are `LevelConfig` |
 | A level-select screen | `LevelManager::levels()` + `nameFor(n)`; the view only reads |
-| Fruit, bonus items | `Tile` + `Player`/`Game::collectPellet` (a new tile kind and event) |
-| Sound | `Event`s are enough; add an audio adapter in the view |
+| Fruit, bonus items | `Tile::Fruit`/`FruitEaten` exist; timed spawn logic is still missing |
+| Sound | `Event`s are enough; the Qt view now plays `SoundEffect`s in response to events |
 | Sprite animation | `Player::animationPhase()` and `GhostMode` already expose what is needed |
 | Different ghost personalities | `Ghost::chaseTarget` is one `switch` per ghost id |
 | Save / high scores | the model has no file I/O; put it in the view or add an explicit `Storage` seam |
