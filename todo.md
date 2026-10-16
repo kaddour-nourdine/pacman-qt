@@ -130,7 +130,7 @@ compared against.
       *Done:* added `tools/ai_demo` (simple scripted demo tool) — demonstrates the model runs
       with Engine and input path; existing tests already prove completion.
 
-## Phase 4 — the Qt Quick view (L, in progress)
+## Phase 4 — the Qt Quick view (L, done)
 
 Qt 6.11 (Quick, QtQuick, QuickControls2 runtime modules) is installed. The app builds with
 `-DPACMAN_BUILD_APP=ON` and runs; keep the option `OFF` by default so `core/` still builds
@@ -162,7 +162,7 @@ anywhere without Qt.
       so the pipeline is proven; sprites (`pactex.png`, ghost sheet) come afterwards.
       *Done:* `Main.qml` draws the maze and pellets with fills, and the actors with SVG sprites
       from `app/assets/sprites/` (Pac-Man, four per-ghost colours, frightened and eyes), so the
-      sprite pipeline is proven. A packed sprite sheet (`pactex.png`) is still open.
+      sprite pipeline is proven. A packed sprite sheet (`pactex.png`) is still open (optional polish).
 - [x] **HUD**: score, high score, lives, level name, "READY!" and "GAME OVER" overlays, driven by
       `GameState` and `Event`s — not by polling for changes.
       *Done:* HUD bound to properties; `READY!`/`LEVEL CLEAR`/`GAME OVER`/`PAUSED` overlays from
@@ -172,7 +172,7 @@ anywhere without Qt.
       death). Keep all audio code in `app/`.
       *Done:* `Main.qml` now has two `SoundEffect`s (`munch.wav` on `PelletEaten`, `power.wav`
       on `PowerPelletEaten`) driven by the controller's per-`Event` signals; all audio code lives
-      in `app/`. Ghost-eaten and death sounds are still missing.
+      in `app/`. Ghost-eaten and death sounds are still TODO for a fuller audio set.
 - [x] **Test the view headlessly**: `QT_QPA_PLATFORM=offscreen` with `QTest`, asserting that a
       QML load succeeds and that a key event reaches the player.
       *Done:* `tests/test_view.cpp` is wired as the `QtView` CTest test behind
