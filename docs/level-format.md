@@ -114,6 +114,9 @@ therefore only need a `P`.
 
 ## `levels/level1.txt` as an example
 
+`level1.txt` is the classic arcade maze, ported from the original GTK `pacman` project
+(`gamemodel.cpp`, `initial_map`). Its header and map:
+
 ```
 name = Level 1
 playerSpeed = 6.0
@@ -121,25 +124,25 @@ playerSpeed = 6.0
 modeSchedule = 7,20,7,20,5,20,5,20
 
 #####################
+#.........#.........#
+#.###.###.#.###.###.#
+#o###.###.#.###.###o#
+#.###.###.#.###.###.#
 #...................#
-#.##.#.###.###.#.##.#
-#o#......#.#......#o#
-#.#.#.####.######.#.#
-#.#.......1.......#.#
-#.#.#####   #####.#.#
-#.#.#### 2 4 ####.#.#
-#.#.      3      .#.#
-#.#.#############.#.#
-_         P         _
-#.###.#.##.##.#.###.#
-#o###.#.##.##.#.###o#
-#.###.#.......#.###.#
-#.###.####.####.###.#
-#.###.####.####.###.#
-#...................#
-#.####.#######.####.#
-#.####.#######.####.#
-#...................#
+#.###.#.#####.#.###.#
+#.###.#.#####.#.###.#
+#.....#...#...#.....#
+#####.### # ###.#####
+_.....# 1234 #....._
+#####.# ##### #.#####
+#.....#   #   #.....#
+#.###.# ##### #.###.#
+#.###.#       #.###.#
+#.........#.........#
+#.###.###.#.###.###.#
+#o..#.....P.....#..o#
+###.#.#.#####.#.#.###
+#.....#...#...#.....#
 #####################
 ```
 
@@ -148,23 +151,28 @@ Facts worth knowing (all asserted by tests):
 | | |
 | --- | --- |
 | Size | 21 × 21 tiles |
-| Player start | `(10, 10)`, facing left |
+| Player start | `(10, 17)`, facing left |
 | Ghost house door | **none** (ghost zone is open in `levels/level1.txt`) |
-| Blinky `1` | `(10, 5)` — above the house area |
-| Pinky `2` | `(9, 7)` — inside the ghost house |
-| Inky `3` | `(10, 8)` — inside the ghost house |
-| Clyde `4` | `(11, 7)` — inside the ghost house |
-| Power pellets `o` | `(1, 3)`, `(19, 3)`, `(1, 12)`, `(19, 12)` |
+| Blinky `1` | `(9, 10)` — inside the ghost house |
+| Pinky `2` | `(10, 10)` — inside the ghost house |
+| Inky `3` | `(11, 10)` — inside the ghost house |
+| Clyde `4` | `(12, 10)` — inside the ghost house |
+| Power pellets `o` | `(1, 3)`, `(19, 3)`, `(1, 17)`, `(19, 17)` |
 | Tunnels | `(0, 10)` and `(20, 10)` |
-| Pellets | 160 total (156 `.` + 4 `o`) |
+| Pellets | 177 total (173 `.` + 4 `o`) |
 
 The house interior in `level1.txt` is **not sealed** (no `-` door tiles), so there are no
-"sealed behind door" constraints today and the player can walk into the ghost area. The
-reachability validator (`tests/TestReachability.cpp`) checks that every pellet (and fruit, if
+"sealed behind door" constraints today and the player can walk into the ghost area. The two
+tunnel tiles are the only conversion from the original GTK map, which wrapped Pac-Man at the
+screen edges instead; the original also had pellets on those two tiles, which are dropped here
+because tunnel tiles never contain pellets.
+The reachability validator (`tests/TestReachability.cpp`) checks that every pellet (and fruit, if
 present) is reachable in each level.
 
-`levels/level2.txt` is the second campaign level (19×16, one `-` door, 125 pellets); it is
-parsed and checked by the same tests, and demonstrates the `modeSchedule`/speed overrides.
+`levels/level2.txt` (the previous campaign level 1, 21×21, no door, 160 pellets) and
+`levels/level3.txt` (19×16, one `-` door, 125 pellets) follow it in the campaign; both are
+parsed and checked by the same tests, and `level3.txt` demonstrates the `modeSchedule`/speed
+overrides.
 
 ---
 

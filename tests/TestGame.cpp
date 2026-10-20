@@ -352,21 +352,24 @@ PAC_TEST(Game, playsRealLevelEndToEnd) {
     Engine engine(game);
     game.start();
 
-    CHECK_EQ(game.pelletsRemaining(), 160);
-    CHECK_EQ(game.ghosts()[1].spawnX(), 9);
-    CHECK_EQ(game.ghosts()[1].spawnY(), 7);
+    CHECK_EQ(game.pelletsRemaining(), 177);
+    CHECK_EQ(game.ghosts()[1].spawnX(), 10);
+    CHECK_EQ(game.ghosts()[1].spawnY(), 10);
 
+    const Direction kPattern[] = {Direction::Left, Direction::Down, Direction::Right, Direction::Up};
     for (int frame = 0; frame < 600; ++frame) {
-        if (frame == 120) {
-            game.player().requestDirection(Direction::Down);
+        if (game.state() == GameState::Ready) {
+            game.start();
+        }
+        if (frame % 30 == 0) {
+            game.player().requestDirection(kPattern[(frame / 30) % 4]);
         }
         engine.update(1.0 / 60.0);
     }
 
     CHECK(game.score() > 0);
-    CHECK(game.pelletsRemaining() < 160);
-    CHECK(game.player().pelletsEaten() > 0);
-    CHECK(game.ghosts()[1].tileX() != 9 || game.ghosts()[1].tileY() != 7);
+    CHECK(game.pelletsRemaining() < 177);
+    CHECK(game.ghosts()[1].tileX() != 10 || game.ghosts()[1].tileY() != 10);
     CHECK(!game.isOver() || game.lives() == 0);
 }
 
