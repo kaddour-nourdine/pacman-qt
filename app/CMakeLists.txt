@@ -1,4 +1,4 @@
-find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2)
+find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Multimedia)
 
 set(CMAKE_AUTOMOC ON)
 
@@ -8,6 +8,8 @@ qt_policy(SET QTP0004 NEW)
 qt_add_library(pacman_view STATIC
     GameController.cpp
     GameController.hpp
+    SfxPlayer.cpp
+    SfxPlayer.hpp
 )
 
 qt_add_qml_module(pacman_view
@@ -51,6 +53,7 @@ target_link_libraries(pacman_view PUBLIC
     pacman_core
     Qt6::Quick
     Qt6::QuickControls2
+    Qt6::Multimedia
 )
 
 target_compile_definitions(pacman_view PRIVATE
