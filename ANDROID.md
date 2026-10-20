@@ -173,9 +173,10 @@ adb shell monkey -p org.pacman.qt 1      # launch (Qt template activity, no cust
 
 ## Android-Specific Code Changes So Far
 
-- `core/src/Level.cpp`: `parseFloat` uses `std::strtof` instead of
-  `std::from_chars` (NDK libc++ has no floating-point `from_chars`); the
-  `Level.parsesIndependentlyOfNumericLocale` test guards locale behavior.
+- `core/src/Level.cpp`: `parseFloat` uses a classic-locale `std::istringstream`
+  instead of `std::from_chars` (NDK libc++ has no floating-point `from_chars`)
+  and instead of `strtof` (locale-dependent — it broke under Qt's `fr_FR`);
+  the `Level.parsesIndependentlyOfNumericLocale` test guards locale behavior.
 - `app/CMakeLists.txt`: sets `QT_ANDROID_COMPILE_SDK_VERSION` to `android-36` so
   Gradle's compileSdk satisfies `androidx.core` while the NDK stays at API 34.
 - Root `CMakeLists.txt`: `if(ANDROID)` block adds `-DANDROID` and warning

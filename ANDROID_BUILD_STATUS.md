@@ -91,8 +91,10 @@ accepted (`yes | sdkmanager --licenses`).
 
 ### 6. Android NDK libc++ has no float `from_chars`
 
-`core/src/Level.cpp` `parseFloat` uses `std::strtof` on Android builds
-(`Level.parsesIndependentlyOfNumericLocale` still guards locale behavior).
+`core/src/Level.cpp` `parseFloat` first switched to `std::strtof`, which made it
+locale-dependent and re-broke `Level.parsesIndependentlyOfNumericLocale` (Qt installs
+`fr_FR`, comma decimals). Final state: a classic-locale `std::istringstream` — portable,
+locale-independent, and guarded by the same test.
 
 ---
 
@@ -135,7 +137,7 @@ accepted (`yes | sdkmanager --licenses`).
 build-android.sh                    # full pipeline (configure → build → APK → sign)
 build-android-core.sh               # core-only build (kept as a fast smoke test)
 app/CMakeLists.txt                  # + QT_ANDROID_COMPILE_SDK_VERSION property
-core/src/Level.cpp                  # strtof float parsing for Android
+core/src/Level.cpp                  # classic-locale istringstream float parsing (portable)
 android/                            # manifest/activity reference material (Qt templates drive the real build)
 ~/Qt/6.12.0/android_arm64_v8a/      # Qt kit (4 cmake dirs restored from armv7 + bitness fix)
 ```

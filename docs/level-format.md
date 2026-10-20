@@ -1,7 +1,7 @@
 # Level file format
 
 Levels are plain text. They live in `levels/`, are read by `Level::loadFile`
-(`core/src/Level.cpp:299`) and validated by `Level::parse` (`core/src/Level.cpp:159`). There is
+(`core/src/Level.cpp:311`) and validated by `Level::parse` (`core/src/Level.cpp:171`). There is
 no binary format and no asset pipeline: edit the file, rebuild nothing, play.
 
 ```
@@ -64,12 +64,13 @@ Every key is optional; the defaults come from `LevelConfig` (`core/include/pacma
 
 Notes:
 
-- Values are parsed strictly (`Level.cpp:73`, `applyHeaderEntry`): the whole value must be a
+- Values are parsed strictly (`Level.cpp:85`, `applyHeaderEntry`): the whole value must be a
   number, trailing junk is rejected, and speeds/durations must be positive.
-- Numbers always use a `.` decimal separator, regardless of the user's locale. Parsing uses
-  `std::from_chars` rather than `strtof`, because the latter would read `6.0` as "six" under a
-  locale that uses a comma (which is what a Qt app installs on start-up). Always write `6.0`,
-  never `6,0`.
+- Numbers always use a `.` decimal separator, regardless of the user's locale. Float parsing
+  uses a `std::istringstream` imbued with the classic `"C"` locale rather than `strtof`,
+  because `strtof` honours `LC_NUMERIC` and would read `6.0` as "six" under a locale that uses
+  a comma (which is what a Qt app installs on start-up); `std::from_chars` is not an option
+  because NDK libc++ has no floating-point overload. Always write `6.0`, never `6,0`.
 - An unknown key is an error (`"unknown level option"`), which catches misspelled keys instead
   of ignoring them.
 - `modeSchedule = 1,2` is how the tests compress the wave pattern into a couple of seconds.
@@ -106,7 +107,7 @@ if (!Level::loadFile("levels/level1.txt", level, &error)) {
 ### Ghosts without a marker
 
 If a level omits `1`–`4`, `Level::parse` places the missing ghosts on the first walkable tile
-that is not the player's start, scanning row by row (`Level.cpp:285`) and flagging
+that is not the player's start, scanning row by row (`Level.cpp:297`) and flagging
 `GhostSpawn::fromMap = false` so the caller can tell the difference. Small test levels
 therefore only need a `P`.
 
