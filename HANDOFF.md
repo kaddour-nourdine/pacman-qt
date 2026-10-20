@@ -15,7 +15,8 @@ holds only the state and the constraints.
 | Toolchain used | CMake 4.3.0, g++ (GCC) 16.2.1, Linux, 16 cores |
 | Qt | **6.11 installed** (`qt6-qtbase-devel`, `qt6-qtdeclarative-devel`); QtQuick/QtQuick.Window/Controls runtime modules present |
 | View | `app/` builds with `-DPACMAN_BUILD_APP=ON`; the `GameController` + QML module live in a `pacman_view` static library, `pacman_app` is a thin `main.cpp`; runs under `QT_QPA_PLATFORM=offscreen`; draws the maze and actors as vectors in the classic arcade style (ported from the original GTK project) and plays WAV sound effects |
-| Working tree | clean (commits `bdf30ac`, `50b3275`) |
+| Working tree | clean (last commits: `131c6e3` bundled levels, `1623f57` touch input, `bedd1dc` audio mixer + on-device diagnostics, docs) |
+| Device tested | Tecno A059 (AsteroidsEEA), Android 16, arm64-v8a, fr-BE — APK installed/launched, bundled levels + touch confirmed; **audio-mixer verification still owed** (last round's logcat was lost to a USB drop) |
 | Last verified commands | `cmake -S . -B build -DPACMAN_BUILD_APP=ON -DPACMAN_BUILD_QT_TESTS=ON && cmake --build build -j16 && ctest --test-dir build` |
 
 `build/` exists and is current, so a rebuild is incremental.
@@ -85,7 +86,14 @@ holds only the state and the constraints.
    resources; when the build-host `PACMAN_LEVELS_DIR` is absent, the view copies them into
    `QStandardPaths::AppDataLocation` and loads from there
    (`GameController::materializeBundledLevels()`, tested by `ViewTest.testBundledLevelsAreShipped`).
-
+9. **Audio mixer verified only by analysis** — commit `bedd1dc` replaced per-play
+   `QSoundEffect` restarts with a single persistent `QAudioSink` + software mixer
+   (`app/SfxPlayer.*`) after on-device instrumentation proved the restarts caused
+   every frame gap (~50 tick gaps/game → ~5 with sound muted; full chain in
+   `ANDROID_BUILD_STATUS.md` §7). One confirmation round on hardware is owed:
+   sounds audible at the right moments, tick gaps stay low, no
+   `pacman: sfx trigger blocked` lines. The perf diagnostics ship in the app and
+   only log on anomalies — decide keep-vs-remove after that round.
 
 ## Suggested first action next session
 
@@ -125,9 +133,41 @@ high-score persistence are in place. Phase 4 documentation is now complete in `d
   it re-broke `Level.parsesIndependentlyOfNumericLocale`)
 - Documentation: `ANDROID.md` (working guide), `ANDROID_BUILD_STATUS.md` (history/root causes)
 
-**Next Steps (Phase 5 device testing, see `todo.md`)**:
-1. `adb install` the signed APK on a device/emulator, confirm it launches with the bundled
-   levels and hits 60 fps
-2. Touch input, lifecycle, orientation/safe areas, back button (tracked in `todo.md`)
+**Device test session 2026-10-20 (afternoon) — what happened**:
+- Installed and launched on a physical phone (Tecno A059, Android 16, arm64-v8a, fr-BE):
+  bundled levels confirmed in logcat, first on-screen rendering OK
+- Touch input implemented and confirmed working by hand (swipe/drag to turn, tap to
+  start; commit `1623f57`)
+- Pellet sounds caused visible stutter; root-caused with on-device instrumentation
+  (tick/render probes) + a mute A/B build: per-play `QSoundEffect` restarts stalled the
+  whole frame pipeline (~50 tick gaps/game → ~5 muted). Replaced by the persistent
+  `QAudioSink` + software mixer `SfxPlayer`/`SfxMixer` (commit `bedd1dc`) — audible
+  confirmation still owed (the last round's logcat was lost to a USB disconnect)
+
+**First actions next session**:
+```sh
+cd /home/nourdine/Development/pacman-qt
+git status && git log --oneline -8          # expect a clean tree
+export PATH=$PATH:$HOME/Android/platform-tools
+adb devices                                  # USB dropped twice — replug if empty
+adb shell input keyevent KEYCODE_WAKEUP      # Qt main() does not advance while dozing!
+adb shell wm dismiss-keyguard
+./build-android.sh && adb install -r build-android/app/android-build/build/outputs/apk/release/pacman_app-signed.apk
+adb logcat -G4M; adb logcat -c
+adb logcat -v time > /tmp/logcat-device.txt &   # capture survives buffer rotation
+adb shell am start -n org.qtproject.example.pacman_app/org.qtproject.qt.android.bindings.QtActivity
+```
+Then play a game and check: munches are audible, `grep -c "tick gap"` near the mute
+baseline (~5), no `sfx trigger blocked`, no unexpected render-thread gaps.
+
+Device quirks learned: the installed package is `org.qtproject.example.pacman_app`
+(Qt's template — the `android/` directory is reference material only, not wired into
+the build); our `qInfo` lands under logcat tag `default` (Qt's own lines use `Qt`);
+launching while the screen dozes and `main()` stalls until the screen wakes.
+
+**Still open (Phase 5, details in `todo.md`)**: mixer verification (above), lifecycle
+suspend/resume, orientation/safe areas, back button, settings persistence,
+touch-friendly pacing, release signing. Also decide whether the perf diagnostics stay
+enabled (they only log on anomalies).
 
 Minor polish (extra audio effects) is tracked in `todo.md`.

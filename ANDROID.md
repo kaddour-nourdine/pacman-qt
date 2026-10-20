@@ -156,21 +156,47 @@ emulator -avd pacman-avd -no-snapshot-load &
 ### Run the App
 
 ```bash
-adb shell monkey -p org.pacman.qt 1      # launch (Qt template activity, no custom intent name)
+# Qt's template activity — the installed package is org.qtproject.example.pacman_app
+# (NOT org.pacman.qt: android/ is reference material, Qt's template drives the build)
+adb shell am start -n org.qtproject.example.pacman_app/org.qtproject.qt.android.bindings.QtActivity
+
+# equivalent one-liner:
+adb shell monkey -p org.qtproject.example.pacman_app 1
 ```
 
-## Known Runtime Gaps (before first device test)
+Device quirks (learned 2026-10-20 on a Tecno A059 / Android 16 / fr-BE):
+
+- **Wake the screen first** (`adb shell input keyevent KEYCODE_WAKEUP`, then
+  `adb shell wm dismiss-keyguard`): Qt's `main()` does not advance while the
+  display is dozing — the process starts but logs nothing until the screen is on.
+- Our `qInfo`/`qWarning` lines land under logcat tag **`default`** (Qt's own
+  messages use tag `Qt`), so filter with `adb logcat -d | grep -a pacman` rather
+  than `-s Qt:V`.
+- Enlarge the ring buffer for long sessions (`adb logcat -G4M`) — this device's
+  verbose system logging rotates startup lines away within minutes. For a full
+  test round, stream `adb logcat -v time > file` in the background: USB drops
+  killed two captures mid-session.
+- USB/adb disconnects twice in one session (replug and re-run `adb devices`
+  before assuming the app is gone).
+
+## Known Runtime Gaps
 
 1. **Levels bundling — resolved.** `levels/*.txt` is embedded as Qt resources
    (`pacman_levels` in `app/CMakeLists.txt`); when the compiled-in `PACMAN_LEVELS_DIR`
    (a build-host path) does not exist, `GameController::materializeBundledLevels()`
    copies `:/levels/*` into `QStandardPaths::AppDataLocation` and the campaign
-   loads from there.
-2. Touch input (swipe-to-turn with dead zone) not implemented in QML yet.
-3. Suspend/resume lifecycle handling untested on device.
-4. Orientation/safe areas/back button not handled (Qt activity, not the
+   loads from there. **Verified on hardware** (logcat shows the bundled path).
+2. **Touch input — resolved.** Swipe/drag to turn with a dead zone, tap to start,
+   in `Main.qml` (commit `1623f57`); confirmed working by hand on a phone.
+3. **Audio — reworked, verification pending.** Per-play `QSoundEffect` restarts
+   stalled the frame pipeline (root cause #7 in `ANDROID_BUILD_STATUS.md`);
+   replaced by the persistent-stream mixer in `app/SfxPlayer.*` (commit
+   `bedd1dc`). One confirmation round on hardware still owed: audible munches,
+   tick gaps at the ~5-per-game baseline, no `sfx trigger blocked` lines.
+4. Suspend/resume lifecycle handling untested on device.
+5. Orientation/safe areas/back button not handled (Qt activity, not the
    reference `android/MainActivity.java`).
-5. Signing uses a shared debug keystore — create a real key for releases.
+6. Signing uses a shared debug keystore — create a real key for releases.
 
 ## Android-Specific Code Changes So Far
 
@@ -184,6 +210,17 @@ adb shell monkey -p org.pacman.qt 1      # launch (Qt template activity, no cust
   and loads the campaign from there.
 - `app/CMakeLists.txt`: sets `QT_ANDROID_COMPILE_SDK_VERSION` to `android-36` so
   Gradle's compileSdk satisfies `androidx.core` while the NDK stays at API 34.
+- `app/SfxPlayer.{hpp,cpp}`: persistent-stream audio mixer — one `QAudioSink`
+  opened at app start and fed until exit; both WAVs are pre-decoded to float PCM
+  and mixed on the audio callback thread (4 voices, linear resampling to the
+  device format). Replaces the QML `SoundEffect`s, which restarted the platform
+  audio stream on every pellet and stuttered the game (see
+  `ANDROID_BUILD_STATUS.md` §7).
+- `app/Main.qml`: touch controls (`MouseArea` over the board: swipe/drag with a
+  dead zone, tap = Space) plus a frame-gap diagnostic log.
+- `app/GameController.cpp` / `app/main.cpp`: perf probes that log only on
+  anomalies (`pacman-perf: tick gap … / render-thread gap …`, plus a ≥4 ms
+  tripwire when a sound trigger blocks).
 - Root `CMakeLists.txt`: `if(ANDROID)` block adds `-DANDROID` and warning
   suppressions for Clang.
 
@@ -192,7 +229,16 @@ adb shell monkey -p org.pacman.qt 1      # launch (Qt template activity, no cust
 ### Check Logs
 
 ```bash
-adb logcat | grep -i pacman
+adb logcat -G4M                       # 4 MiB ring buffer (default loses startup lines)
+adb logcat -c                          # clear before a test round
+adb logcat -d | grep -aE "pacman|sfx"  # dump after a round
+
+# useful lines (our qInfo tag is `default`, Qt's own is `Qt`):
+#   pacman: using levels bundled …          bundled levels loaded
+#   pacman-perf: tick gap N ms; work …      UI-thread stall (should stay rare/absent)
+#   pacman-perf: render-thread gap N ms     scene-graph stall
+#   pacman: sfx trigger blocked N ms        sound trigger blocked on the UI thread
+#                                          (must never print with the mixer)
 ```
 
 ## Troubleshooting

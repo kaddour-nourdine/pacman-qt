@@ -1,7 +1,7 @@
 # Android Build Status - Phase 5
 
 **Date:** 2026-10-20
-**Status:** ✅ **Full app builds, APK produced and signed**
+**Status:** ✅ **Full app builds, APK produced, signed, installed and launched on a phone**
 
 ---
 
@@ -96,6 +96,33 @@ locale-dependent and re-broke `Level.parsesIndependentlyOfNumericLocale` (Qt ins
 `fr_FR`, comma decimals). Final state: a classic-locale `std::istringstream` — portable,
 locale-independent, and guarded by the same test.
 
+### 7. Per-play `QSoundEffect` restarts stalled the whole frame pipeline (on device)
+
+First device test: every pellet eaten stuttered the visible game. Root-caused in
+three steps with on-device instrumentation (shipped in commit `bedd1dc`):
+
+1. `QSoundEffect::play()` blocked the **UI thread** 15–40 ms per pellet — the 90 ms
+   munch ends between pellets, so each play did a full `AudioTrack` stop/start.
+   Tick instrumentation: `tick gap 54–98 ms … ui-cpu 15–40 ms`, in lockstep with
+   eating.
+2. Moving playback to a worker thread removed the UI block but **not** the stutter:
+   `tick gap ~50 ms; work 0 ms` with UI + render threads sleeping together
+   (48/48 correlated render-thread gaps) — the restart perturbed the entire
+   frame pipeline, not just the calling thread.
+3. A no-sound A/B build cut tick gaps from ~50 per game to ~5 → audio confirmed
+   as the trigger (and the user felt the difference).
+
+**Fix:** `app/SfxPlayer.{hpp,cpp}` — one `QAudioSink` opened at startup and fed
+until exit; both WAVs pre-decoded to float PCM, mixed on the audio callback
+thread (4 voices, linear resampling; Int16/Int32/Float/UInt8 formats). Triggering
+a sound from the game thread is a mutex + a few writes with a ≥4 ms tripwire log —
+nothing starts or stops during gameplay. No audio device = warning, not a failure
+(headless tests keep passing).
+
+**Pending:** one confirmation round on hardware (audible munches, tick gaps at the
+~5/game baseline, no `sfx trigger blocked`); the last round's logcat was lost to a
+USB disconnect.
+
 ---
 
 ## Phase 5 Completion
@@ -109,10 +136,10 @@ locale-independent, and guarded by the same test.
 | Full app build | ✅ **Done** | `pacman_core`, `pacman_view`, `pacman_app` |
 | APK generation | ✅ **Done** | `android-build-release-unsigned.apk` |
 | APK signing | ✅ Done | debug keystore, `apksigner verify` passes |
-| Install on a device/emulator | ⏳ Pending | no device attached at build time |
-| Device runtime testing | ⏳ Pending | see below |
+| Install on a device | ✅ Done | Tecno A059 (Android 16, arm64-v8a, fr-BE); `adb install -r` + launch OK, bundled levels confirmed in logcat |
+| Device runtime testing | 🟡 In progress | levels + touch verified; audio-mixer confirmation round pending (USB dropped during the last one) |
 
-**Overall: build pipeline 100% complete; device testing pending.**
+**Overall: build pipeline 100% complete; first device test done, device testing in progress.**
 
 ---
 
@@ -123,10 +150,14 @@ locale-independent, and guarded by the same test.
    compiled-in `PACMAN_LEVELS_DIR` does not exist `GameController::materializeBundledLevels()`
    copies them into `QStandardPaths::AppDataLocation` for `LevelManager::loadDirectory`
    (core stays Qt-free). Covered by `ViewTest.testBundledLevelsAreShipped`.
-2. **Touch input**: swipe-to-turn with a dead zone not implemented yet.
-3. **Lifecycle**: suspend/resume pause handling untested on device.
-4. **Orientation / safe areas / back button**: not handled yet (see `todo.md` Phase 5).
-5. **Signing**: currently a shared debug keystore; release signing needs a real key.
+2. ~~**Touch input**~~ **Resolved**: swipe/drag with a dead zone + tap-to-start in
+   `Main.qml` (commit `1623f57`); confirmed working by hand on the phone.
+3. **Audio**: per-play `QSoundEffect` restarts caused every frame gap (root cause
+   §7 above); reworked into the persistent-stream mixer (commit `bedd1dc`),
+   hardware confirmation still owed.
+4. **Lifecycle**: suspend/resume pause handling untested on device.
+5. **Orientation / safe areas / back button**: not handled yet (see `todo.md` Phase 5).
+6. **Signing**: currently a shared debug keystore; release signing needs a real key.
 
 ---
 
@@ -143,6 +174,8 @@ android/                            # manifest/activity reference material (Qt t
 
 ---
 
-**Status:** ✅ Build pipeline working end-to-end
-**Next Action:** attach a device/emulator, `adb install` the signed APK, fix level
-bundling, then work through the device-testing items in `todo.md` Phase 5.
+**Status:** ✅ Build pipeline working end-to-end; installed and launched on hardware
+**Next Action:** confirm the audio mixer on hardware (audible munches, tick gaps at the
+~5/game mute baseline, no `sfx trigger blocked` — commands in `ANDROID.md`), then the
+remaining `todo.md` Phase 5 items: lifecycle, orientation/safe areas, back button,
+settings persistence.
