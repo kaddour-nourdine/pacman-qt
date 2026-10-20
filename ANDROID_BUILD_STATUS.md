@@ -118,12 +118,11 @@ locale-independent, and guarded by the same test.
 
 ## Known runtime gaps before first launch
 
-1. **Levels directory is a build-host path.** `app/CMakeLists.txt` compiles
-   `PACMAN_LEVELS_DIR="${CMAKE_SOURCE_DIR}/levels"` into the binary — a path that does
-   not exist on the phone. `GameController.cpp` logs a warning and the game will start
-   with no levels. Fix: bundle `levels/*.txt` into the QML/resource system for Android
-   and load from there (core stays Qt-free; the view copies them to a writable dir or
-   the loader gains a stream-based entry point).
+1. ~~**Levels directory is a build-host path.**~~ **Resolved**: `levels/*.txt` is now
+   embedded as Qt resources (`pacman_levels` in `app/CMakeLists.txt`), and when the
+   compiled-in `PACMAN_LEVELS_DIR` does not exist `GameController::materializeBundledLevels()`
+   copies them into `QStandardPaths::AppDataLocation` for `LevelManager::loadDirectory`
+   (core stays Qt-free). Covered by `ViewTest.testBundledLevelsAreShipped`.
 2. **Touch input**: swipe-to-turn with a dead zone not implemented yet.
 3. **Lifecycle**: suspend/resume pause handling untested on device.
 4. **Orientation / safe areas / back button**: not handled yet (see `todo.md` Phase 5).

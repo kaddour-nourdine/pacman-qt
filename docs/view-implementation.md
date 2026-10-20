@@ -10,7 +10,9 @@ This document describes the Qt Quick view implementation for pacman-qt, which wa
 
 The view layer (`app/`) is a **Qt 6 Quick / QML** application that:
 
-1. Loads and manages the campaign via `LevelManager`
+1. Loads and manages the campaign via `LevelManager` (from the source tree when present,
+   otherwise from the `levels/*.txt` files embedded as Qt resources — see
+   `GameController::materializeBundledLevels()`)
 2. Drives the simulation with a 60fps timer
 3. Renders the maze and actors using vector graphics on a `Canvas`
 4. Handles keyboard input (arrows, WASD, Space, P, Esc, R)
@@ -173,7 +175,9 @@ Located in `app/GameController.hpp` and `app/GameController.cpp`.
 
 #### Responsibilities
 
-- **Owns the model**: `LevelManager`, `Game`, and `Engine` instances
+- **Owns the model**: `LevelManager`, `Game`, and `Engine` instances; the campaign comes from
+  `PACMAN_LEVELS_DIR` (source tree) or, when that path does not exist (installed app, phone),
+  from the `:/levels/*` resources copied into `QStandardPaths::AppDataLocation`
 - **Frame loop**: 16ms `QTimer` drives `Engine::update()` with real frame time
 - **State synchronization**: Snapshots model state and exposes it via Q_PROPERTIES
 - **Event forwarding**: Converts `Event` structs from the model into Qt signals

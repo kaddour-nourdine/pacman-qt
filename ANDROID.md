@@ -161,10 +161,11 @@ adb shell monkey -p org.pacman.qt 1      # launch (Qt template activity, no cust
 
 ## Known Runtime Gaps (before first device test)
 
-1. **Levels are not bundled yet.** `PACMAN_LEVELS_DIR` compiles in the build-host
-   path (`${CMAKE_SOURCE_DIR}/levels`), which does not exist on the phone;
-   `GameController` logs a warning and starts with no levels. Bundle `levels/*.txt`
-   as Qt resources for Android and load from there.
+1. **Levels bundling — resolved.** `levels/*.txt` is embedded as Qt resources
+   (`pacman_levels` in `app/CMakeLists.txt`); when the compiled-in `PACMAN_LEVELS_DIR`
+   (a build-host path) does not exist, `GameController::materializeBundledLevels()`
+   copies `:/levels/*` into `QStandardPaths::AppDataLocation` and the campaign
+   loads from there.
 2. Touch input (swipe-to-turn with dead zone) not implemented in QML yet.
 3. Suspend/resume lifecycle handling untested on device.
 4. Orientation/safe areas/back button not handled (Qt activity, not the
@@ -177,6 +178,10 @@ adb shell monkey -p org.pacman.qt 1      # launch (Qt template activity, no cust
   instead of `std::from_chars` (NDK libc++ has no floating-point `from_chars`)
   and instead of `strtof` (locale-dependent — it broke under Qt's `fr_FR`);
   the `Level.parsesIndependentlyOfNumericLocale` test guards locale behavior.
+- `app/CMakeLists.txt` / `app/GameController.cpp`: `levels/*.txt` embedded as Qt
+  resources (`pacman_levels`, fed by a `file(GLOB)`); when `PACMAN_LEVELS_DIR` is
+  absent the controller copies `:/levels/*` into `QStandardPaths::AppDataLocation`
+  and loads the campaign from there.
 - `app/CMakeLists.txt`: sets `QT_ANDROID_COMPILE_SDK_VERSION` to `android-36` so
   Gradle's compileSdk satisfies `androidx.core` while the NDK stays at API 34.
 - Root `CMakeLists.txt`: `if(ANDROID)` block adds `-DANDROID` and warning

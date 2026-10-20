@@ -54,7 +54,10 @@ Only processed when `PACMAN_BUILD_APP=ON` at the top level. It finds `Qt6 Quick`
   QML types, so no plugin is needed) and embeds the SVG sprites and WAV sounds with
   `qt_add_resources(... pacman_assets ...)`. The old `app/assets.qrc` file is gone, so a new
   asset only needs a line in that `FILES` list. `PACMAN_LEVELS_DIR` is passed as a compile
-  definition so the controller can load the campaign.
+  definition so the controller can load the campaign from the source tree, and a second
+  `qt_add_resources(... pacman_levels ...)` (a `file(GLOB)` over `levels/*.txt`) embeds the
+  campaign itself so installed copies and phones — where the host path does not exist —
+  can still start a game.
 - `pacman_app` — a thin `qt_add_executable` wrapping only `main.cpp`, linking `pacman_view`.
 
 Keeping the view in a library lets the headless test (`tests/test_view.cpp`) link exactly the
@@ -488,9 +491,12 @@ window.
 
 ### `app/GameController.hpp` / `app/GameController.cpp`
 
-The only class that includes both Qt and `core/`. It owns a `Game` (built from
-`LevelManager::loadDirectory(PACMAN_LEVELS_DIR)`) and an `Engine`, and it is where real time
-enters the program:
+The only class that includes both Qt and `core/`. It owns a `Game` (built from the campaign
+loaded at construction: `LevelManager::loadDirectory(PACMAN_LEVELS_DIR)` when the source tree
+is present, otherwise the levels embedded as `:/levels/*`, copied out by the static
+`GameController::materializeBundledLevels()` into `QStandardPaths::AppDataLocation` — `core`
+reads files with `std::ifstream`, which cannot see Qt resources) and an `Engine`, and it is
+where real time enters the program:
 
 - **Properties** (read by QML, change-notified by signals): `score`, `highScore`, `lives`,
   `levelNumber`, `levelName`, `pelletsRemaining`, `stateName`, `paused`, `mazeData`, `itemData`,

@@ -1,7 +1,10 @@
 #include "GameController.hpp"
 
 #include <QDebug>
+#include <QDir>
+#include <QFile>
 #include <QSettings>
+#include <QStandardPaths>
 #include <QVariantMap>
 
 #include <cmath>
@@ -12,15 +15,68 @@ namespace {
 pac::LevelManager loadLevels() {
     pac::LevelManager levels;
     std::string error;
-    if (!levels.loadDirectory(PACMAN_LEVELS_DIR, &error)) {
-        qWarning() << "pacman: cannot load levels from" << PACMAN_LEVELS_DIR << ":" << error.c_str();
+
+    // 1) The source tree: present in dev builds, so day-to-day level edits are
+    //    picked up without a rebuild.
+    if (levels.loadDirectory(PACMAN_LEVELS_DIR, &error) && !levels.isEmpty()) {
+        return levels;
     }
-    if (levels.isEmpty()) {
-        qWarning() << "pacman: no levels found in" << PACMAN_LEVELS_DIR;
+
+    // 2) The levels embedded in the binary (see app/CMakeLists.txt). This is
+    //    the only source that exists on a phone, where PACMAN_LEVELS_DIR is a
+    //    build-host path.
+    levels.clear();
+    const QString bundledDir = GameController::materializeBundledLevels();
+    if (!bundledDir.isEmpty() &&
+        levels.loadDirectory(bundledDir.toStdString(), &error) && !levels.isEmpty()) {
+        qInfo() << "pacman: using levels bundled with the binary ->" << bundledDir;
+        return levels;
     }
+
+    qWarning() << "pacman: no levels available; source dir" << PACMAN_LEVELS_DIR
+               << "- error:" << QString::fromStdString(error);
     return levels;
 }
 
+}
+
+QString GameController::materializeBundledLevels() {
+    const QString root = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    if (root.isEmpty()) {
+        qWarning() << "pacman: no writable app data location; cannot unpack bundled levels";
+        return QString();
+    }
+
+    const QDir source(QStringLiteral(":/levels"));
+    const QStringList names = source.entryList({QStringLiteral("*.txt")}, QDir::Files, QDir::Name);
+    if (names.isEmpty()) {
+        qWarning() << "pacman: no levels embedded in the binary";
+        return QString();
+    }
+
+    QDir dest(root);
+    if (!dest.mkpath(QStringLiteral("levels"))) {
+        qWarning() << "pacman: cannot create" << dest.filePath(QStringLiteral("levels"));
+        return QString();
+    }
+    const QString dir = dest.filePath(QStringLiteral("levels"));
+
+    // Rewrite unconditionally: the files are tiny and this keeps an installed
+    // app up to date when a new package ships changed levels.
+    for (const QString& name : names) {
+        QFile in(source.filePath(name));
+        QFile out(dir + QLatin1Char('/') + name);
+        if (!in.open(QIODevice::ReadOnly)) {
+            qWarning() << "pacman: cannot read bundled level" << name;
+            continue;
+        }
+        if (!out.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+            qWarning() << "pacman: cannot write level file" << out.fileName();
+            continue;
+        }
+        out.write(in.readAll());
+    }
+    return dir;
 }
 
 GameController::GameController(QObject* parent)

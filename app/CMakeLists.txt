@@ -35,6 +35,18 @@ qt_add_resources(pacman_view "pacman_assets"
         assets/audio/power.wav
 )
 
+# The campaign travels inside the binary as well: PACMAN_LEVELS_DIR only points
+# at the source tree of the build host, which does not exist on a phone (or any
+# installed copy). GameController materialises these files into the app data
+# directory on startup and loads them from there. Mirrors the source directory's
+# "*.txt" rule, so a new level file needs no CMake edit.
+file(GLOB PACMAN_LEVEL_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/levels/*.txt")
+qt_add_resources(pacman_view "pacman_levels"
+    PREFIX "/levels"
+    BASE "${CMAKE_SOURCE_DIR}/levels"
+    FILES ${PACMAN_LEVEL_FILES}
+)
+
 target_link_libraries(pacman_view PUBLIC
     pacman_core
     Qt6::Quick
