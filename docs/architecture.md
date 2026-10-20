@@ -173,7 +173,7 @@ Who may enter what (`Maze::canEnter`, `Maze.cpp:78`):
 
 The single flag `passDoors` encodes the last row. `Entity::canPassDoors()` returns `false`
 for the player and `true` for ghosts (`Ghost.hpp:59`). In a level that uses doors (like
-`levels/level2.txt`) the player is stopped at the doorway while the ghosts pass through;
+`levels/level3.txt`) the player is stopped at the doorway while the ghosts pass through;
 `levels/level1.txt` has no door tiles, so its ghost area is open to everyone. The flag is also
 what lets eaten ghosts (eyes) path back through a door.
 

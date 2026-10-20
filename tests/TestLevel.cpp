@@ -153,9 +153,9 @@ PAC_TEST(Level, loadsLevelFile) {
     }
     CHECK_EQ(level.cols(), 21);
     CHECK_EQ(level.rows(), 21);
-    CHECK_EQ(level.pelletCount(), 160);
+    CHECK_EQ(level.pelletCount(), 177);
     CHECK_EQ(level.playerX(), 10);
-    CHECK_EQ(level.playerY(), 10);
+    CHECK_EQ(level.playerY(), 17);
     CHECK_EQ(level.tileAt(0, 10), Tile::Tunnel);
     CHECK_EQ(level.tileAt(20, 10), Tile::Tunnel);
     CHECK_NEAR(level.config().frightenedSeconds, 6.0, 1e-6);

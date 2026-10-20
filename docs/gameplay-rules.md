@@ -168,8 +168,8 @@ on a tunnel tile uses `tunnelSpeed` (ghosts visibly slow down in tunnels, like t
   level: `LevelComplete` for 2 seconds, then `levelNumber_++`, `loadLevel` of
   `levels_.levelFor(levelNumber_)` and `beginLevel()` again (`Game.cpp:171`).
 - `levelFor` wraps past the end of the list. A single-level manager (what `Game(Level)`
-  builds) therefore replays the same maze forever, while the two-level campaign loops
-  `level1.txt` → `level2.txt` → `level1.txt` like the arcade.
+  builds) therefore replays the same maze forever, while the three-level campaign loops
+  `level1.txt` → `level2.txt` → `level3.txt` → `level1.txt` like the arcade.
 - Lives and score carry over between levels; only the constructors and `reset()` apply
   `startingLives` again. The next level's speeds, frightened seconds and `modeSchedule` take
   effect as soon as it is loaded, because `loadLevel` rebuilds the schedule from its header.
@@ -191,13 +191,19 @@ fidelity work remains:
    usable during play. Eyes deliberately do the opposite (they need the door).
 3. **Fruit / bonus items**: fruit tiles exist (`Tile::Fruit`, `charToTile` accepts `F`/`f`) and `Maze` counts/collects them; `Game::collectPellet` collects fruit and emits `FruitEaten` with `kFruitPoints = 100`. **No timed fruit spawn logic is implemented yet.** No inter-level cut-scenes.
 4. **Frightened warning flash** is available via predicates (`Game::frightenedFlash()`, `Ghost::isFrightenedFlashing()`); ghost behavior/visuals can use these.
-5. **Corner turn restriction** prevents upward turns on row 5, columns 8-11 (the row above the ghost house, `Ghost::forbidUpwardTurn`) for level1; this is hardcoded for now and not data-driven.
+5. **Corner turn restriction** prevents upward turns on row 5, columns 8-11
+   (`Ghost::forbidUpwardTurn`); this is hardcoded for now and not data-driven. It was tuned for
+   the *previous* `level1` layout, where row 5 was the row above the ghost house; in the classic
+   maze (current `level1.txt`) the house top is row 9, so the restriction only affects an open
+   corridor and is a candidate for removal or making data-driven.
 6. **Frightened time does not stop while the player is dead** or while a level transition
    pause is running.
 7. **The eaten-ghost score does not include the current power pellet bonus**, and the ghost
    eaten counter within one power pellet is not reset explicitly (the fright timer handles it).
-8. **Difficulty curve and levels:** `levels/level2.txt` exists with shorter scatter phases,
+8. **Difficulty curve and levels:** `levels/level3.txt` exists with shorter scatter phases,
    higher ghost speed (`ghostSpeed = 5.5`), and shorter frightened seconds (`frightenedSeconds = 4.0`).
+   `levels/level1.txt` is the classic arcade maze ported from the original GTK `pacman` project;
+   `levels/level2.txt` is the previous campaign opener.
    `Game` walks the `LevelManager` list, carrying over score and lives between levels; an empty
    list produces `GameOver`. The next level's tuning (speeds, schedule, frightened seconds)
    takes effect when loaded.

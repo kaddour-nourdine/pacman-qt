@@ -520,11 +520,11 @@ The window (640×760, black). A root `Column` takes focus and handles `Keys.onPr
 (arrows/WASD → `game.requestDirection(...)`, `Space`/`Return` → `start()`, `P`/`Esc` →
 `togglePause()`, `R` → `reset()`). Below a small HUD (score, high score, level name, and lives
 shown as `life.svg` images) an `Item` holds a `Canvas` that repaints on `mazeChanged`/
-`itemsChanged`/`actorsChanged`/`stateChanged`. The `Canvas` draws the maze and pellets with
-plain fills, and the actors with SVG sprites loaded as `Image` objects: Pac-Man
-(`pacman.svg`, with a mouth wedge from `playerMouth`), one ghost sprite per id
-(`ghost_red.svg`, `ghost_pink.svg`, `ghost_cyan.svg`, `ghost_orange.svg`), `frightened.svg`
-when frightened and `eyes.svg` when eaten. Overlays show `READY!`, `LEVEL CLEAR`, `GAME OVER`, `PAUSED` and
+`itemsChanged`/`actorsChanged`/`stateChanged`. The `Canvas` draws everything as vectors in the
+classic arcade style ported from the original GTK project: blue outlined wall tiles, pure-white
+pellets, a yellow wedge Pac-Man whose mouth animates from `playerMouth` (red while dying), and
+dome-plus-body ghosts with white/black eyes — pure blue when frightened (white while flashing),
+eyes-only when eaten. Overlays show `READY!`, `LEVEL CLEAR`, `GAME OVER`, `PAUSED` and
 `NO LEVELS FOUND` from `stateName`. A `Connections` block turns the controller's signals into a
 floating score popup with a `NumberAnimation`. Two `SoundEffect`s (`munch.wav`, `power.wav`)
 are played from the `pelletEaten` and `powerPelletEaten` signals — this is the `app/`-side

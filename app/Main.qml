@@ -113,97 +113,49 @@ Window {
                     ctx.fill()
                 }
 
-                function drawEyes(ctx, gx, gy, r) {
-                    circle(ctx, gx - r * 0.35, gy - r * 0.2, r * 0.3, "#ffffff")
-                    circle(ctx, gx + r * 0.35, gy - r * 0.2, r * 0.3, "#ffffff")
-                    circle(ctx, gx - r * 0.28, gy - r * 0.15, r * 0.15, "#2121de")
-                    circle(ctx, gx + r * 0.42, gy - r * 0.15, r * 0.15, "#2121de")
+                function drawEyes(ctx, px, py, c) {
+                    const dx = c / 6
+                    const dy = -c / 10
+                    circle(ctx, px - dx, py + dy, c * 2 / 15, "#ffffff")
+                    circle(ctx, px + dx, py + dy, c * 2 / 15, "#ffffff")
+                    circle(ctx, px - dx, py + dy, c / 15, "#000000")
+                    circle(ctx, px + dx, py + dy, c / 15, "#000000")
                 }
 
-                property var pacmanImage: Qt.createQmlObject('import QtQuick; Image { source: "qrc:/assets/sprites/pacman.svg"; visible: false }', board, "pacmanImg")
                 function drawPlayer(ctx, c) {
                     const px = game.playerX * c
                     const py = game.playerY * c
-                    const size = c * 0.9
-                    ctx.save()
-                    let angle = 0
+                    const r = Math.max(c / 2 - 2, 1)
+                    let base = 0
                     switch (game.playerDirection) {
-                    case 1: angle = -Math.PI / 2; break
-                    case 2: angle = 0; break
-                    case 3: angle = Math.PI / 2; break
-                    case 4: angle = Math.PI; break
+                    case 1: base = 1.5 * Math.PI; break
+                    case 2: base = 0; break
+                    case 3: base = 0.5 * Math.PI; break
+                    case 4: base = Math.PI; break
                     }
-                    ctx.translate(px, py)
-                    ctx.rotate(angle)
-                    if (pacmanImage && pacmanImage.sourceSize.width > 0) {
-                        ctx.drawImage(pacmanImage, -size/2, -size/2, size, size)
-                    } else {
-                        const radius = c * 0.42
-                        const openness = 0.06 + 0.22 * Math.abs(Math.sin(game.playerMouth * Math.PI * 2))
-                        ctx.fillStyle = "#ffff00"
+                    const mouth = Math.abs(Math.sin(game.playerMouth * Math.PI * 2)) * 30 * Math.PI / 180
+                    ctx.fillStyle = game.stateName === "died" ? "#ff0000" : "#ffff00"
+                    ctx.beginPath()
+                    ctx.moveTo(px, py)
+                    ctx.arc(px, py, r, base + mouth, base + 2 * Math.PI - mouth)
+                    ctx.closePath()
+                    ctx.fill()
+                }
+
+                function drawGhost(ctx, c, g) {
+                    const px = g.x * c
+                    const py = g.y * c
+                    const r = Math.max(c / 2 - 2, 1)
+                    const colors = ["#ff0000", "#ffb3b3", "#00ffff", "#ff9900"]
+                    if (!g.eyes) {
+                        ctx.fillStyle = g.edible ? (g.flashing ? "#ffffff" : "#0000ff") : colors[g.id]
                         ctx.beginPath()
-                        ctx.moveTo(0, 0)
-                        ctx.arc(0, 0, radius, openness, Math.PI * 2 - openness)
+                        ctx.arc(px, py, r, Math.PI, 2 * Math.PI)
+                        ctx.rect(px - r, py, 2 * r, r)
                         ctx.closePath()
                         ctx.fill()
                     }
-                    ctx.restore()
-                }
-
-                property var ghostImages: [
-                    Qt.createQmlObject('import QtQuick; Image { source: "qrc:/assets/sprites/ghost_red.svg"; visible: false }', board, "ghostImg0"),
-                    Qt.createQmlObject('import QtQuick; Image { source: "qrc:/assets/sprites/ghost_pink.svg"; visible: false }', board, "ghostImg1"),
-                    Qt.createQmlObject('import QtQuick; Image { source: "qrc:/assets/sprites/ghost_cyan.svg"; visible: false }', board, "ghostImg2"),
-                    Qt.createQmlObject('import QtQuick; Image { source: "qrc:/assets/sprites/ghost_orange.svg"; visible: false }', board, "ghostImg3")
-                ]
-                property var frightenedImage: Qt.createQmlObject('import QtQuick; Image { source: "qrc:/assets/sprites/frightened.svg"; visible: false }', board, "frightImg")
-                property var eyesImage: Qt.createQmlObject('import QtQuick; Image { source: "qrc:/assets/sprites/eyes.svg"; visible: false }', board, "eyesImg")
-                function drawGhosts(ctx, c) {
-                    const colors = ["#ff0000", "#ffb8ff", "#00ffff", "#ffb852"]
-                    const list = game.ghosts
-                    for (let i = 0; i < list.length; ++i) {
-                        const g = list[i]
-                        const gx = g.x * c
-                        const gy = g.y * c
-                        const size = c * 0.9
-                        if (g.eyes) {
-                            if (eyesImage && eyesImage.sourceSize.width > 0) {
-                                ctx.drawImage(eyesImage, gx - size/2, gy - size/2, size, size)
-                            } else {
-                                drawEyes(ctx, gx, gy, c * 0.42)
-                            }
-                            continue
-                        }
-                        if (g.edible) {
-                            if (frightenedImage && frightenedImage.sourceSize.width > 0) {
-                                ctx.drawImage(frightenedImage, gx - size/2, gy - size/2, size, size)
-                            } else {
-                                const r = c * 0.42
-                                ctx.fillStyle = g.flashing ? "#ffffff" : "#2121de"
-                                ctx.beginPath()
-                                ctx.arc(gx, gy - r * 0.1, r, Math.PI, 0)
-                                ctx.lineTo(gx + r, gy + r * 0.85)
-                                ctx.lineTo(gx - r, gy + r * 0.85)
-                                ctx.closePath()
-                                ctx.fill()
-                            }
-                            continue
-                        }
-                        const ghostImage = ghostImages[g.id]
-                        if (ghostImage && ghostImage.sourceSize.width > 0) {
-                            ctx.drawImage(ghostImage, gx - size/2, gy - size/2, size, size)
-                        } else {
-                            const r = c * 0.42
-                            ctx.fillStyle = colors[g.id]
-                            ctx.beginPath()
-                            ctx.arc(gx, gy - r * 0.1, r, Math.PI, 0)
-                            ctx.lineTo(gx + r, gy + r * 0.85)
-                            ctx.lineTo(gx - r, gy + r * 0.85)
-                            ctx.closePath()
-                            ctx.fill()
-                            drawEyes(ctx, gx, gy, r)
-                        }
-                    }
+                    drawEyes(ctx, px, py, c)
                 }
 
                 onPaint: {
@@ -214,29 +166,33 @@ Window {
                     const walls = game.mazeData
                     const items = game.itemData
                     const total = game.mazeCols * game.mazeRows
+                    ctx.lineWidth = Math.max(c * 2 / 30, 1)
+                    ctx.strokeStyle = "#0000ff"
                     for (let i = 0; i < total; ++i) {
                         const x = i % game.mazeCols
                         const y = (i - x) / game.mazeCols
                         const wall = walls.charAt(i)
                         if (wall === "#") {
-                            ctx.fillStyle = "#2121de"
-                            ctx.fillRect(x * c + 1, y * c + 1, c - 2, c - 2)
+                            const inset = c / 15
+                            ctx.strokeRect(x * c + inset, y * c + inset, c - 2 * inset, c - 2 * inset)
                         } else if (wall === "-") {
                             ctx.fillStyle = "#ffb8de"
                             ctx.fillRect(x * c + c * 0.1, y * c + c * 0.35, c * 0.8, c * 0.25)
                         }
                         const item = items.charAt(i)
                         if (item === ".") {
-                            circle(ctx, (x + 0.5) * c, (y + 0.5) * c, Math.max(c * 0.09, 1), "#ffb8ae")
+                            circle(ctx, (x + 0.5) * c, (y + 0.5) * c, Math.max(c / 15, 1), "#ffffff")
                         } else if (item === "o") {
-                            circle(ctx, (x + 0.5) * c, (y + 0.5) * c, Math.max(c * 0.27, 2), "#ffb8ae")
+                            circle(ctx, (x + 0.5) * c, (y + 0.5) * c, Math.max(c / 5, 2), "#ffffff")
                         } else if (item === "F") {
-                            ctx.fillStyle = "#ff3131"
-                            circle(ctx, (x + 0.5) * c, (y + 0.5) * c, Math.max(c * 0.38, 3), "#ff3131")
+                            circle(ctx, (x + 0.5) * c, (y + 0.5) * c, Math.max(c * 0.3, 3), "#ff3131")
                         }
                     }
                     drawPlayer(ctx, c)
-                    drawGhosts(ctx, c)
+                    const list = game.ghosts
+                    for (let i = 0; i < list.length; ++i) {
+                        drawGhost(ctx, c, list[i])
+                    }
                 }
 
                 onWidthChanged: requestPaint()
