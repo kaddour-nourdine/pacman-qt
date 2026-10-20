@@ -15,7 +15,7 @@ holds only the state and the constraints.
 | Toolchain used | CMake 4.3.0, g++ (GCC) 16.2.1, Linux, 16 cores |
 | Qt | **6.11 installed** (`qt6-qtbase-devel`, `qt6-qtdeclarative-devel`); QtQuick/QtQuick.Window/Controls runtime modules present |
 | View | `app/` builds with `-DPACMAN_BUILD_APP=ON`; the `GameController` + QML module live in a `pacman_view` static library, `pacman_app` is a thin `main.cpp`; runs under `QT_QPA_PLATFORM=offscreen`; draws the maze and actors as vectors in the classic arcade style (ported from the original GTK project) and plays WAV sound effects |
-| Working tree | clean (commits `6e1253b`, `e1e8a4a`) |
+| Working tree | clean (commits `bdf30ac`, `50b3275`) |
 | Last verified commands | `cmake -S . -B build -DPACMAN_BUILD_APP=ON -DPACMAN_BUILD_QT_TESTS=ON && cmake --build build -j16 && ctest --test-dir build` |
 
 `build/` exists and is current, so a rebuild is incremental.
@@ -61,9 +61,11 @@ holds only the state and the constraints.
 
 1. **Qt app is unverified on a real display** — only checked headless (`offscreen`). Confirm the
    window, keyboard focus and `Canvas` rendering on a desktop session.
-2. **Locale-sensitive parsing is fixed** — `Level.cpp` now uses `std::from_chars` (was `strtof`,
-   which broke under Qt because `QGuiApplication` installs `fr_FR` and its comma decimal
-   separator). A regression test (`Level.parsesIndependentlyOfNumericLocale`) covers it.
+2. **Locale-sensitive parsing is fixed** — `Level.cpp` parses floats with a classic-locale
+   `std::istringstream`, which is immune to both problems: `strtof` broke under Qt because
+   `QGuiApplication` installs `fr_FR` with its comma decimal separator, and `std::from_chars`
+   has no floating-point overload in NDK libc++. A regression test
+   (`Level.parsesIndependentlyOfNumericLocale`) covers it.
 3. `Game::checkCollisions` uses tile comparison, not sprite overlap — currently intentional and
    documented (`docs/gameplay-rules.md` §7), revisit only as a deliberate fidelity decision.
 4. Ghost house release timers (pellet-based), frightened flash predicates and the corner-turn
@@ -116,7 +118,9 @@ high-score persistence are in place. Phase 4 documentation is now complete in `d
 - compileSdk raised to 36 via `QT_ANDROID_COMPILE_SDK_VERSION` (Qt's template bundles
   `androidx.core:core`, needs ≥ 36) while the NDK stays at API 34; SDK has
   `platforms;android-36` + `build-tools;36.0.0`, licenses accepted
-- Fixed `std::from_chars` float compatibility issue for Android NDK (`core/src/Level.cpp`)
+- Portable float parsing in `core/src/Level.cpp`: classic-locale `std::istringstream`
+  (NDK libc++ has no floating-point `std::from_chars`, and `strtof` is locale-dependent —
+  it re-broke `Level.parsesIndependentlyOfNumericLocale`)
 - Documentation: `ANDROID.md` (working guide), `ANDROID_BUILD_STATUS.md` (history/root causes)
 
 **Next Steps (Phase 5 device testing, see `todo.md`)**:

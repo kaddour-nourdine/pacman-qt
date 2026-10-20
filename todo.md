@@ -197,7 +197,9 @@ design decisions, testing, and verification checklist.
 - [x] **CMake configuration**: Updated CMakeLists.txt files for Android support
 - [x] **Build scripts**: `build-android.sh` (full pipeline) and `build-android-core.sh` created
 - [x] **Core library compiles**: `libpacman_core.a` builds successfully for Android ARM64
-- [x] **Compatibility fix**: Fixed `std::from_chars` float issue for Android NDK
+- [x] **Compatibility fix**: float parsing is portable — `parseFloat` uses a classic-locale
+      `std::istringstream` (NDK libc++ has no float `std::from_chars`, and `strtof` is
+      locale-dependent)
 - [x] **Qt 6 for Android installed**: Qt 6.12.0 `android_arm64_v8a` kit via the Qt Online
       Installer at `~/Qt/6.12.0/android_arm64_v8a/`
 - [x] **Qt Android CMake integration**: `find_package(Qt6 Quick QuickControls2)` works under

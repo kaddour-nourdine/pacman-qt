@@ -155,22 +155,24 @@ static fallback for out-of-range indices so callers never have to bounds-check.
 
 Two phases.
 
-*Parsing the header* — `applyHeaderEntry` (line 73) maps a key to a config field with strict
-conversion: `parseFloat`/`parseInt` use `std::from_chars` and require the entire string to be
-consumed, so `6.0x` or `abc` are errors rather than silently `0`. Positive-value checks are
-next to each key, which keeps the error messages specific
-(`invalid value for 'playerSpeed': 'x'`). Unknown keys fail loudly. `from_chars` is
-deliberately used instead of `strtof`/`strtol`: the latter honour the C locale, and because a
-Qt application installs the user's locale (`fr_FR` uses a decimal comma) a level could fail to
-load depending on the machine. See the regression test
+*Parsing the header* — `applyHeaderEntry` (line 85) maps a key to a config field with strict
+conversion: `parseFloat`/`parseInt` require the entire string to be consumed, so `6.0x` or
+`abc` are errors rather than silently `0`. Positive-value checks are next to each key, which
+keeps the error messages specific
+(`invalid value for 'playerSpeed': 'x'`). Unknown keys fail loudly. `parseFloat` reads through
+a `std::istringstream` imbued with the classic `"C"` locale instead of `strtof`/`strtol`:
+those honour the C locale, and because a Qt application installs the user's locale (`fr_FR`
+uses a decimal comma) a level could fail to load depending on the machine. (`std::from_chars`
+would be the natural choice but NDK libc++ has no floating-point overload; `parseInt` uses it
+for integers.) See the regression test
 `Level.parsesIndependentlyOfNumericLocale`.
 
-*Parsing the map* — `Level::parse` (line 159) scans rows in order, treating the first
+*Parsing the map* — `Level::parse` (line 171) scans rows in order, treating the first
 non-`key = value` line as the start of the map. It enforces equal row widths, valid
 characters, exactly one `P`, no blank line inside the map, and then walks the grid once,
 recording spawn points and counting pellets. `1`–`4` markers are *not* stored as tiles: the
 tile becomes `Empty` and only the spawn coordinate is kept. Ghosts without a marker get the
-first walkable non-player tile (`Level.cpp:285`).
+first walkable non-player tile (`Level.cpp:297`).
 
 `loadFile` is a thin wrapper: read the file into a vector of lines, call `parse`.
 
