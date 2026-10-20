@@ -2,6 +2,8 @@
 
 #include <charconv>
 #include <fstream>
+#include <locale>
+#include <sstream>
 #include <system_error>
 #include <utility>
 
@@ -29,13 +31,23 @@ bool parseFloat(const std::string& text, float& out) {
     if (text.empty()) {
         return false;
     }
+
+    // Parse with the classic "C" locale so "6.0" always means six, whatever
+    // LC_NUMERIC is set to. We cannot use std::from_chars for floats because
+    // older Android NDK libc++ lacks it, and plain strtof/atof are
+    // locale-dependent (regression test: Level.parsesIndependentlyOfNumericLocale).
+    std::istringstream stream(text);
+    stream.imbue(std::locale::classic());
     float value = 0.0f;
-    const char* begin = text.data();
-    const char* end = begin + text.size();
-    const auto result = std::from_chars(begin, end, value);
-    if (result.ec != std::errc() || result.ptr != end) {
+    if (!(stream >> value)) {
         return false;
     }
+    std::string rest;
+    std::getline(stream, rest);  // everything after the number must be empty
+    if (!rest.empty()) {
+        return false;
+    }
+
     out = value;
     return true;
 }

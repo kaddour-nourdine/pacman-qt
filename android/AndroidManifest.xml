@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.pacman.qt"
+    android:versionCode="1"
+    android:versionName="0.1.0">
+
+    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
+    
+    <!-- Required for Qt Android applications -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    
+    <!-- Required for audio -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    
+    <!-- Required for file access -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
+        android:maxSdkVersion="28" />
+    
+    <application
+        android:name="org.qtproject.qt.android.bindings.QtApplication"
+        android:label="PacMan Qt"
+        android:icon="@drawable/icon"
+        android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+        android:screenOrientation="landscape"
+        android:requestLegacyExternalStorage="true">
+        
+        <!-- Main activity -->
+        <activity
+            android:name="org.qtproject.qt.android.bindings.QtActivity"
+            android:label="PacMan Qt"
+            android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|locale|fontScale|keyboard|keyboardHidden|navigation"
+            android:launchMode="singleTop"
+            android:exported="true">
+            
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            
+            <!-- Enable immersive mode -->
+            <meta-data
+                android:name="android.app.android.hardwareAccelerated"
+                android:value="true" />
+        </activity>
+        
+        <!-- Qt meta-data -->
+        <meta-data
+            android:name="android.app.lib_name"
+            android:value="pacman-qt" />
+        <meta-data
+            android:name="android.app.qt_sources_resource_id"
+            android:resource="@array/qt_sources" />
+        <meta-data
+            android:name="android.app.repository"
+            android:value="default" />
+        <meta-data
+            android:name="android.app.qt_libs_resource_id"
+            android:resource="@array/qt_libs" />
+        <meta-data
+            android:name="android.app.bundled_libs_resource_id"
+            android:resource="@array/bundled_libs" />
+        <meta-data
+            android:name="android.app.bundled_in_lib_resource_id"
+            android:resource="@array/bundled_in_lib" />
+        <meta-data
+            android:name="android.app.bundled_in_assets_resource_id"
+            android:resource="@array/bundled_in_assets" />
+        <meta-data
+            android:name="android.app.fuse_qt_libs"
+            android:value="true" />
+        <meta-data
+            android:name="android.app.load_local_libs"
+            android:value="pacman_view,pacman_core" />
+        <meta-data
+            android:name="android.app.load_local_jars"
+            android:value="" />
+        <meta-data
+            android:name="android.app.static_init_classes"
+            android:value="" />
+        <meta-data
+            android:name="android.app.extra_libs"
+            android:value="" />
+        <meta-data
+            android:name="android.app.extra_jars"
+            android:value="" />
+        <meta-data
+            android:name="android.app.uses_cleartext_traffic"
+            android:value="true" />
+        <meta-data
+            android:name="android.app.qt_environment_variables"
+            android:value="" />
+        <meta-data
+            android:name="android.app.qt_android_assets"
+            android:value="" />
+    </application>
+</manifest>

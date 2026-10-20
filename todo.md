@@ -12,13 +12,13 @@ Legend: `[ ]` open · `[x]` done · `[!]` blocked · sizes **S** (< 1 h) / **M**
 | | |
 | --- | --- |
 | Model (`core/`) | complete: level parsing, level list (`LevelManager`), maze rules, player, 4 ghosts, scoring, lives, mode schedule, events, fixed-timestep engine |
-| Level data | two playable levels, `levels/level1.txt` and `levels/level2.txt`, format documented |
+| Level data | three playable levels — `levels/level1.txt` is the classic arcade maze ported from the original GTK `pacman`, plus `levels/level2.txt` and `levels/level3.txt`, format documented |
 | Tests | 100 core tests, 11 CTest suites, all passing (plus the `pacman_tests_reach` reachability binary and, with `PACMAN_BUILD_QT_TESTS=ON`, the `QtView` suite) |
 | Docs | `README.md` + `docs/` (architecture, code tour, gameplay rules, level format, testing) |
 | Tools | `tools/pacman_text` terminal player and `tools/ai_demo` |
-| View | `app/` Qt Quick app — `GameController` bridge, SVG-sprite rendering, sound effects, high score persistence, keyboard input, and a passing headless QTest |
-| Android | **not started** — Phase 5, blocked on Phase 4 |
-| Git | repository initialised, branch `master`; the Phase 4 sprite/audio work is **uncommitted** in the working tree |
+| View | `app/` Qt Quick app — `GameController` bridge, classic vector arcade rendering (ported from the original GTK look), sound effects, high score persistence, keyboard input, and a passing headless QTest. **Fully documented in `docs/view-implementation.md`** |
+| Android | **build pipeline complete** — Phase 5: full Qt app cross-compiles for arm64-v8a, signed APK produced by `./build-android.sh`; device testing still open |
+| Git | repository initialised, branch `master`; Phase 4 sprite/audio work committed (see `HANDOFF.md`) |
 
 Build and test, for reference:
 
@@ -136,6 +136,9 @@ Qt 6.11 (Quick, QtQuick, QuickControls2 runtime modules) is installed. The app b
 `-DPACMAN_BUILD_APP=ON` and runs; keep the option `OFF` by default so `core/` still builds
 anywhere without Qt.
 
+**Documentation**: Fully documented in `docs/view-implementation.md` — covers architecture, components,
+design decisions, testing, and verification checklist.
+
 - [x] Install Qt 6 dev packages, then verify: `cmake --find-package` or a tiny
       `find_package(Qt6 REQUIRED COMPONENTS Quick)` project configures.
       *Done:* `qt6-qtbase-devel`, `qt6-qtdeclarative-devel` and friends installed; a scratch
@@ -160,9 +163,12 @@ anywhere without Qt.
       each update and lerps them by `Engine::interpolationAlpha()` (with a tunnel-wrap snap).
 - [x] **Rendering**: first draw coloured rectangles per tile + circles for the actors (no assets)
       so the pipeline is proven; sprites (`pactex.png`, ghost sheet) come afterwards.
-      *Done:* `Main.qml` draws the maze and pellets with fills, and the actors with SVG sprites
-      from `app/assets/sprites/` (Pac-Man, four per-ghost colours, frightened and eyes), so the
-      sprite pipeline is proven. A packed sprite sheet (`pactex.png`) is still open (optional polish).
+      *Done:* `Main.qml` draws everything as vectors in the classic arcade style ported from the
+      original GTK project — blue outlined wall tiles, pure-white pellets, a yellow wedge Pac-Man
+      with an animated mouth (red while dying), and dome-plus-body ghosts with white/black eyes
+      (pure-blue frightened with white flash, eyes-only state). Actor SVG sprites are no longer
+      used by the canvas; `life.svg` remains for the HUD lives. The packed sprite sheet item is
+      cancelled — vector rendering is the intended look.
 - [x] **HUD**: score, high score, lives, level name, "READY!" and "GAME OVER" overlays, driven by
       `GameState` and `Event`s — not by polling for changes.
       *Done:* HUD bound to properties; `READY!`/`LEVEL CLEAR`/`GAME OVER`/`PAUSED` overlays from
@@ -183,11 +189,28 @@ anywhere without Qt.
 - [x] **Input**: arrows + WASD, and a pause key. Later: swipe gestures for touch.
       *Done:* arrows/WASD turn, `Space` starts/restarts, `P`/`Esc` pause, `R` resets.
 
-## Phase 5 — Android (L, blocked on Phase 4)
+## Phase 5 — Android (L, build pipeline done!)
 
-- [ ] Toolchain: `qt6-base-dev-tools`, Android SDK/NDK, and CMake with
-      `-DCMAKE_TOOLCHAIN_FILE=$QT_DIR/lib/cmake/Qt6/android.toolchain.cmake`. Build with
-      `qt_add_executable(... )` + `qt_deploy_runtime_dependencies`, producing an `.apk`.
+- [x] **Toolchain setup**: Android SDK/NDK installed (NDK 26.2.11394342, platforms 34/36,
+      build-tools 36.0.0), CMake toolchain configured
+- [x] **Android project structure**: `android/` directory with manifest, Java activity, and resources
+- [x] **CMake configuration**: Updated CMakeLists.txt files for Android support
+- [x] **Build scripts**: `build-android.sh` (full pipeline) and `build-android-core.sh` created
+- [x] **Core library compiles**: `libpacman_core.a` builds successfully for Android ARM64
+- [x] **Compatibility fix**: Fixed `std::from_chars` float issue for Android NDK
+- [x] **Qt 6 for Android installed**: Qt 6.12.0 `android_arm64_v8a` kit via the Qt Online
+      Installer at `~/Qt/6.12.0/android_arm64_v8a/`
+- [x] **Qt Android CMake integration**: `find_package(Qt6 Quick QuickControls2)` works under
+      the NDK toolchain — the NDK forces `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY`, so the
+      build must pass `=BOTH`; also repaired kit files a previous session had deleted
+      (restored from the armv7 kit, pointer-size `"4"`→`"8"`). Full write-up in
+      `ANDROID_BUILD_STATUS.md`.
+- [x] **Full app build**: `pacman_core` + `pacman_view` + `pacman_app` compile for arm64-v8a
+- [x] **APK generation**: `androiddeployqt` + Gradle produce the APK; `build-android.sh`
+      signs it with a debug keystore (`pacman_app-signed.apk`, `apksigner verify` passes)
+- [ ] **Bundle levels for Android**: `PACMAN_LEVELS_DIR` is a build-host path — the phone
+      has no `levels/` directory, so the game starts with no levels. Ship `levels/*.txt` as
+      Qt resources and load from there (core stays Qt-free; view-side copy or stream entry).
 - [ ] **Install on a device/emulator** and profile a frame: confirm 60 fps on a mid-range phone.
 - [ ] **Touch input**: swipe to turn (with a dead zone so a tap does not spin), drag to move.
 - [ ] **Lifecycle**: handle suspend/resume — the model should pause (`Engine` time scale 0) and

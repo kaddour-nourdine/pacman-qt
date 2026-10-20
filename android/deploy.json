@@ -1,0 +1,35 @@
+{
+    "application-binary": "pacman_app",
+    "android-gradle": {
+        "versionName": "0.1.0",
+        "versionCode": 1,
+        "packageName": "org.pacman.qt",
+        "applicationName": "PacMan Qt",
+        "targetSdkVersion": 34,
+        "minSdkVersion": 24,
+        "sdkBuildToolsVersion": "34.0.0",
+        "ndkVersion": "26.2.11394342",
+        "qtVersion": "6.11.2",
+        "buildVariant": "Release"
+    },
+    "android-sources": [
+        "android/src/org/pacman/qt/MainActivity.java"
+    ],
+    "android-libs": [
+        "pacman_view",
+        "pacman_core"
+    ],
+    "assets": [
+        "app/assets/audio/munch.wav",
+        "app/assets/audio/power.wav",
+        "app/assets/sprites/"
+    ],
+    "qt": {
+        "imports": [
+            "QtQuick",
+            "QtQuick.Controls",
+            "QtQuick.Window",
+            "QtMultimedia"
+        ]
+    }
+}

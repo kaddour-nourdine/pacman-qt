@@ -1,5 +1,6 @@
 #include <QDebug>
 #include <QGuiApplication>
+#include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQmlError>
@@ -10,6 +11,7 @@ int main(int argc, char** argv) {
     QGuiApplication app(argc, argv);
     QCoreApplication::setOrganizationName(QStringLiteral("pacman-qt"));
     QCoreApplication::setApplicationName(QStringLiteral("pacman"));
+    app.setWindowIcon(QIcon(QStringLiteral(":/assets/icons/pacman.svg")));
 
     GameController controller;
 

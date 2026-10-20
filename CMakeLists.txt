@@ -24,6 +24,25 @@ endif()
 
 option(PACMAN_BUILD_APP "Build the Qt Quick application" OFF)
 if(PACMAN_BUILD_APP)
+    # Android-specific configuration
+    if(ANDROID)
+        message(STATUS "Configuring for Android build")
+        
+        # Set Android-specific compiler flags
+        add_compile_definitions(ANDROID)
+        
+        # Ensure position-independent code
+        set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+        
+        # Android-specific warnings suppression for Clang
+        if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+            add_compile_options(
+                -Wno-unused-command-line-argument
+                -Wno-expansion-to-defined
+            )
+        endif()
+    endif()
+    
     add_subdirectory(app)
 endif()
 
