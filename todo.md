@@ -210,9 +210,14 @@ design decisions, testing, and verification checklist.
 - [x] **Full app build**: `pacman_core` + `pacman_view` + `pacman_app` compile for arm64-v8a
 - [x] **APK generation**: `androiddeployqt` + Gradle produce the APK; `build-android.sh`
       signs it with a debug keystore (`pacman_app-signed.apk`, `apksigner verify` passes)
-- [ ] **Bundle levels for Android**: `PACMAN_LEVELS_DIR` is a build-host path — the phone
-      has no `levels/` directory, so the game starts with no levels. Ship `levels/*.txt` as
-      Qt resources and load from there (core stays Qt-free; view-side copy or stream entry).
+- [x] **Bundle levels for Android**: done — `levels/*.txt` is embedded as Qt resources
+      (`qt_add_resources(... pacman_levels ...)` in `app/CMakeLists.txt`, fed by a
+      `file(GLOB ... levels/*.txt)` so a new level file needs no CMake edit). When the
+      compiled-in `PACMAN_LEVELS_DIR` (a build-host path) is missing, the view calls
+      `GameController::materializeBundledLevels()` to copy `:/levels/*` into
+      `QStandardPaths::AppDataLocation`/`levels` and loads from there; `core` stays Qt-free.
+      Covered by `ViewTest.testBundledLevelsAreShipped` and verified end-to-end with the
+      source `levels/` directory hidden.
 - [ ] **Install on a device/emulator** and profile a frame: confirm 60 fps on a mid-range phone.
 - [ ] **Touch input**: swipe to turn (with a dead zone so a tap does not spin), drag to move.
 - [ ] **Lifecycle**: handle suspend/resume — the model should pause (`Engine` time scale 0) and

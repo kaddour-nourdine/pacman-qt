@@ -98,7 +98,9 @@ tools/
   pacman_text/              a terminal renderer you can actually play
   ai_demo/                  a small scripted run of the engine
 levels/
-  level1.txt, level2.txt    the playable levels, written in a plain ASCII format
+  level1.txt, level2.txt, level3.txt  the playable levels, written in a plain ASCII
+                                      format (also embedded as Qt resources so an
+                                      installed app or phone can load them)
 tests/                      the test suite (100 tests, no external framework)
   test_view.cpp             optional headless Qt view test (PACMAN_BUILD_QT_TESTS)
 docs/                       the documentation you are reading

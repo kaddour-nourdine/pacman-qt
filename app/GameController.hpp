@@ -115,4 +115,10 @@ private:
 
 public:
     int directionForTest() const { return static_cast<int>(game_.player().requestedDirection()); }
+
+    // Copies the levels embedded as Qt resources (":/levels") into the writable
+    // app data directory and returns it; empty on failure. `core` reads level
+    // files with std::ifstream, which cannot see Qt resources, so the view
+    // materialises them once per launch (a few KB).
+    static QString materializeBundledLevels();
 };

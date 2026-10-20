@@ -158,10 +158,13 @@ catches "somewhere a hidden dependency on frame rate crept in", which no hand-wr
 value would.
 
 **Test the real asset too.** `TestGame.playsRealLevelEndToEnd` loads `levels/level1.txt`,
-checks 160 pellets and Pinky's spawn, runs 600 frames through `Engine`, and asserts the score
+checks 177 pellets and Pinky's spawn, runs 600 frames through `Engine`, and asserts the score
 went up, pellets were eaten and a ghost left the house. A hand-designed map can pass every unit
 test while the actual level file is broken; this test is the safety net. `PACMAN_LEVELS_DIR`
-is a compile definition so the test can find the file wherever the build directory is.
+is a compile definition so the test can find the file wherever the build directory is. The Qt
+suite's `ViewTest.testBundledLevelsAreShipped` covers the other copy of the campaign — the one
+embedded as Qt resources — by materializing it into a test-mode directory and loading it with
+`LevelManager`.
 
 ---
 

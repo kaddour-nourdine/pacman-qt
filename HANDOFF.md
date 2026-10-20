@@ -81,8 +81,10 @@ holds only the state and the constraints.
    armv7 kit. If Qt ever misbehaves oddly, re-run a `find_package` probe first; the
    MaintenanceTool at `~/Qt/MaintenanceTool` is the official repair route (no local package
    cache though — needs network).
-8. **Android levels are not bundled** — `PACMAN_LEVELS_DIR` bakes in the build-host path;
-   on a device the app logs a warning and has no levels. First real Phase 5 task.
+8. **Android levels are bundled** (resolved) — `levels/*.txt` ships inside the binary as Qt
+   resources; when the build-host `PACMAN_LEVELS_DIR` is absent, the view copies them into
+   `QStandardPaths::AppDataLocation` and loads from there
+   (`GameController::materializeBundledLevels()`, tested by `ViewTest.testBundledLevelsAreShipped`).
 
 
 ## Suggested first action next session
@@ -124,9 +126,8 @@ high-score persistence are in place. Phase 4 documentation is now complete in `d
 - Documentation: `ANDROID.md` (working guide), `ANDROID_BUILD_STATUS.md` (history/root causes)
 
 **Next Steps (Phase 5 device testing, see `todo.md`)**:
-1. **Bundle `levels/*.txt` for Android** — `PACMAN_LEVELS_DIR` is a build-host path, so the
-   game currently starts with no levels on a phone
-2. `adb install` the signed APK on a device/emulator, confirm it launches and hits 60 fps
-3. Touch input, lifecycle, orientation/safe areas, back button (tracked in `todo.md`)
+1. `adb install` the signed APK on a device/emulator, confirm it launches with the bundled
+   levels and hits 60 fps
+2. Touch input, lifecycle, orientation/safe areas, back button (tracked in `todo.md`)
 
 Minor polish (extra audio effects) is tracked in `todo.md`.
