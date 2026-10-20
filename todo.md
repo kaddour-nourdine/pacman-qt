@@ -17,7 +17,7 @@ Legend: `[ ]` open · `[x]` done · `[!]` blocked · sizes **S** (< 1 h) / **M**
 | Docs | `README.md` + `docs/` (architecture, code tour, gameplay rules, level format, testing) |
 | Tools | `tools/pacman_text` terminal player and `tools/ai_demo` |
 | View | `app/` Qt Quick app — `GameController` bridge, classic vector arcade rendering (ported from the original GTK look), sound effects, high score persistence, keyboard input, and a passing headless QTest. **Fully documented in `docs/view-implementation.md`** |
-| Android | **build pipeline complete** — Phase 5: full Qt app cross-compiles for arm64-v8a, signed APK produced by `./build-android.sh`; device testing still open |
+| Android | **build pipeline complete + first device test done** — Phase 5: signed APK installs/launches on a phone with bundled levels, touch input landed; mixer verification and the rest of device testing still open |
 | Git | repository initialised, branch `master`; Phase 4 sprite/audio work committed (see `HANDOFF.md`) |
 
 Build and test, for reference:
@@ -179,6 +179,8 @@ design decisions, testing, and verification checklist.
       *Done:* `Main.qml` now has two `SoundEffect`s (`munch.wav` on `PelletEaten`, `power.wav`
       on `PowerPelletEaten`) driven by the controller's per-`Event` signals; all audio code lives
       in `app/`. Ghost-eaten and death sounds are still TODO for a fuller audio set.
+      On Android the playback path is a persistent-stream mixer (`SfxPlayer`/`SfxMixer`,
+      commit `bedd1dc`) — per-play `QSoundEffect` restarts stalled the frame pipeline.
 - [x] **Test the view headlessly**: `QT_QPA_PLATFORM=offscreen` with `QTest`, asserting that a
       QML load succeeds and that a key event reaches the player.
       *Done:* `tests/test_view.cpp` is wired as the `QtView` CTest test behind
@@ -186,7 +188,8 @@ design decisions, testing, and verification checklist.
       `QQmlApplicationEngine`, sends a Right-arrow key event to the window and checks the
       controller received it. The test runs under `QT_QPA_PLATFORM=offscreen` (set by CTest) and
       passes.
-- [x] **Input**: arrows + WASD, and a pause key. Later: swipe gestures for touch.
+- [x] **Input**: arrows + WASD, and a pause key. Touch input (swipe/drag/tap) added in
+      Phase 5 and verified on a phone (commit `1623f57`).
       *Done:* arrows/WASD turn, `Space` starts/restarts, `P`/`Esc` pause, `R` resets.
 
 ## Phase 5 — Android (L, build pipeline done!)
@@ -218,8 +221,23 @@ design decisions, testing, and verification checklist.
       `QStandardPaths::AppDataLocation`/`levels` and loads from there; `core` stays Qt-free.
       Covered by `ViewTest.testBundledLevelsAreShipped` and verified end-to-end with the
       source `levels/` directory hidden.
-- [ ] **Install on a device/emulator** and profile a frame: confirm 60 fps on a mid-range phone.
-- [ ] **Touch input**: swipe to turn (with a dead zone so a tap does not spin), drag to move.
+- [x] **Install on a device and launch**: done 2026-10-20 on a Tecno A059 (Android 16,
+      arm64-v8a, fr-BE locale) — `adb install -r` + `QtActivity` launch, bundled levels
+      confirmed in logcat (`pacman: using levels bundled …`), fr-BE doubling as a live
+      locale-regression check. Exact commands and device quirks in `ANDROID.md`.
+- [x] **Touch input**: swipe/drag to turn with a dead zone (`max(30px, 8% of board)`,
+      origin re-arms while held), tap = Space — done (commit `1623f57`), confirmed by
+      hand on the phone.
+- [ ] **Verify the audio mixer on hardware** (first item of the next session): after the
+      per-play `QSoundEffect` rework (commit `bedd1dc`, investigation in
+      `ANDROID_BUILD_STATUS.md` §7), confirm munches are audible at the right moments,
+      `pacman-perf` tick gaps stay near the mute baseline (~5 per game instead of ~50)
+      and no `pacman: sfx trigger blocked` lines appear. The confirming logcat of the
+      last round was lost to a USB disconnect — the code has not yet been heard working.
+- [ ] **Frame pacing on device**: instrumentation ships (tick gap/phase/ui-cpu lines,
+      render-thread cadence probe, QML frame-gap log — all anomaly-only); use it once
+      the mixer is verified to confirm smooth gameplay, then decide whether the
+      diagnostics stay on.
 - [ ] **Lifecycle**: handle suspend/resume — the model should pause (`Engine` time scale 0) and
       resume without a giant `dt` spike; the existing frame clamp already helps.
 - [ ] **Orientation and safe areas**: landscape-only, insets-aware layout.
