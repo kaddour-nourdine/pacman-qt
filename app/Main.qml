@@ -236,6 +236,16 @@ Window {
 
             Text {
                 anchors.centerIn: board
+                anchors.verticalCenterOffset: Math.max(root.cell * 1.9, 34)
+                visible: game.stateName === "ready" || game.stateName === "gameOver"
+                text: game.stateName === "ready" ? "TAP OR SPACE TO START — SWIPE OR ARROWS TO TURN"
+                                                 : "TAP OR SPACE TO PLAY AGAIN"
+                color: "#888888"
+                font.pixelSize: Math.max(root.cell * 0.5, 12)
+            }
+
+            Text {
+                anchors.centerIn: board
                 visible: game.stateName === "levelComplete"
                 text: "LEVEL CLEAR"
                 color: "#00ffff"
@@ -296,6 +306,58 @@ Window {
                     }
                     function onFruitEaten(points, x, y) {
                         popup.show("+" + points, x, y)
+                    }
+                }
+            }
+
+            // Touch controls (phones/tablets): swipe or drag to turn, tap to
+            // start or restart — the touch equivalents of the arrow keys and
+            // Space. The threshold is the dead zone that keeps a tap (or a
+            // shaky finger) from spinning Pac-Man; once crossed the origin
+            // re-arms, so a continuous drag keeps steering.
+            MouseArea {
+                id: touchControl
+                anchors.fill: parent
+                property real pressX: 0
+                property real pressY: 0
+                property bool swiped: false
+                readonly property real threshold: Math.max(30, Math.min(boardArea.width, boardArea.height) * 0.08)
+
+                function sendDirection(dx, dy) {
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        game.requestDirection(dx > 0 ? 2 : 4)   // right : left
+                    } else {
+                        game.requestDirection(dy > 0 ? 3 : 1)   // down  : up
+                    }
+                }
+
+                onPressed: (mouse) => {
+                    pressX = mouse.x
+                    pressY = mouse.y
+                    swiped = false
+                }
+                onPositionChanged: (mouse) => {
+                    if (!pressed) {
+                        return
+                    }
+                    const dx = mouse.x - pressX
+                    const dy = mouse.y - pressY
+                    if (Math.max(Math.abs(dx), Math.abs(dy)) >= threshold) {
+                        swiped = true
+                        sendDirection(dx, dy)
+                        pressX = mouse.x
+                        pressY = mouse.y
+                    }
+                }
+                onReleased: (mouse) => {
+                    if (!swiped) {
+                        game.start()      // tap == Space: start / restart
+                        return
+                    }
+                    const dx = mouse.x - pressX
+                    const dy = mouse.y - pressY
+                    if (Math.max(Math.abs(dx), Math.abs(dy)) >= threshold) {
+                        sendDirection(dx, dy)
                     }
                 }
             }
