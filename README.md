@@ -9,7 +9,8 @@ The project follows a **model / view split**:
   level parsing, the simulation clock. Pure C++, no graphics, no platform APIs, fully
   deterministic and unit-tested.
 - **View** (`app/`) — a Qt Quick / QML front end that reads the model, draws the maze and
-  actors (SVG sprites on a `Canvas`, with WAV sound effects) and forwards key presses. A small
+  actors in the classic arcade style on a `Canvas` (blue outlined walls, wedge Pac-Man with an
+  animated mouth, dome ghosts, WAV sound effects) and forwards key presses. A small
   `GameController` QObject is the only bridge between QML and the model, so `core/` stays
   Qt-free and can be reused on Android unchanged.
 
@@ -20,11 +21,11 @@ The project follows a **model / view split**:
 | Part | State |
 | --- | --- |
 | Simulation model (maze, player, ghosts, rules, level list, clock) | Done, 100 tests passing |
-| Level file format, level list (`LevelManager`) + two playable levels (`levels/level1.txt`, `levels/level2.txt`) | Done |
-| Qt Quick / QML view, window, input (`app/`, needs Qt 6) | Done (SVG sprites, HUD, sound effects) |
+| Level file format, level list (`LevelManager`) + three playable levels (`levels/level1.txt` is the classic arcade maze, `levels/level2.txt`, `levels/level3.txt`) | Done |
+| Qt Quick / QML view, window, input (`app/`, needs Qt 6) | Done (classic vector arcade rendering, HUD, sound effects) |
 | Headless terminal renderer (`tools/pacman_text`) | Done |
 | Automated headless Qt view test (`tests/test_view.cpp`, `PACMAN_BUILD_QT_TESTS`) | Done (loads QML and checks a key event reaches the controller) |
-| Android packaging | **Not started** |
+| Android packaging | Build pipeline complete — `./build-android.sh` cross-compiles the Qt app for arm64-v8a and produces a signed APK (device testing still open) |
 
 The model runs on its own: `Game.playsRealLevelEndToEnd` plays a level for ten simulated
 seconds and checks that pellets get eaten and the ghosts leave their house. To watch it without
@@ -92,7 +93,7 @@ app/                        the Qt Quick view (built only with -DPACMAN_BUILD_AP
   main.cpp                  QGuiApplication + QQmlApplicationEngine entry point
   GameController.*          the only bridge between QML and the model
   Main.qml                  the maze, HUD, overlays, keyboard input and sound effects
-  assets/                   SVG sprites and WAV sound effects (embedded as Qt resources)
+  assets/                   SVG sprites, the app icon, and WAV sound effects (embedded as Qt resources)
 tools/
   pacman_text/              a terminal renderer you can actually play
   ai_demo/                  a small scripted run of the engine
@@ -149,6 +150,8 @@ Supporting documents:
 - [`docs/code-tour.md`](docs/code-tour.md) — a file-by-file tour with the responsibility of
   every class and function.
 - [`docs/testing.md`](docs/testing.md) — how the test harness works and how to add a test.
+- [`docs/view-implementation.md`](docs/view-implementation.md) — complete documentation of the
+  Qt Quick view (Phase 4), including architecture, components, design decisions, and testing.
 
 ---
 

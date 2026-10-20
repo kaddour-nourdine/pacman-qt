@@ -23,6 +23,7 @@ qt_add_resources(pacman_view "pacman_assets"
     FILES
         assets/sprites/tiles.svg
         assets/sprites/pacman.svg
+        assets/icons/pacman.svg
         assets/sprites/ghost_red.svg
         assets/sprites/ghost_pink.svg
         assets/sprites/ghost_cyan.svg
@@ -54,6 +55,15 @@ target_link_libraries(pacman_app PRIVATE pacman_view)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(pacman_app PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+if(ANDROID)
+    # The Gradle template bundles androidx.core:core, which requires a
+    # compileSdk of at least 36. Keep ANDROID_PLATFORM (the NDK API level)
+    # at 34 and only raise the Gradle-side compile SDK.
+    set_target_properties(pacman_app PROPERTIES
+        QT_ANDROID_COMPILE_SDK_VERSION "android-36"
+    )
 endif()
 
 qt_finalize_executable(pacman_app)
