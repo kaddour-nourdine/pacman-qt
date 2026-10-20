@@ -8,6 +8,7 @@
 #include <QStandardPaths>
 
 #include "GameController.hpp"
+#include "SfxPlayer.hpp"
 
 class ViewTest : public QObject {
     Q_OBJECT
@@ -37,8 +38,10 @@ private slots:
 
     void testLoadAndInput() {
         GameController controller;
+        SfxPlayer sfx;
         QQmlApplicationEngine engine;
         engine.rootContext()->setContextProperty("game", &controller);
+        engine.rootContext()->setContextProperty("sfx", &sfx);
         engine.load(QUrl("qrc:/qt/qml/PacMan/Main.qml"));
         QVERIFY(!engine.rootObjects().isEmpty());
 

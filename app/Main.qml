@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Window
 import QtQuick.Controls
-import QtMultimedia
 
 Window {
     id: root
@@ -14,6 +13,10 @@ Window {
     property int cols: Math.max(game.mazeCols, 1)
     property int rows: Math.max(game.mazeRows, 1)
     property real cell: Math.max(Math.min(boardArea.width / cols, boardArea.height / rows), 4)
+
+    // Frame-gap instrumentation (stalls are logged while the game runs) —
+    // kept from the on-device audio investigation, see SfxPlayer.
+    property real lastFrameAt: 0
 
     Column {
         id: rootColumn
@@ -363,25 +366,28 @@ Window {
             }
         }
 
-        SoundEffect {
-            id: munchSound
-            source: "qrc:/assets/audio/munch.wav"
-            volume: 0.6
-        }
-
-        SoundEffect {
-            id: powerSound
-            source: "qrc:/assets/audio/power.wav"
-            volume: 0.6
-        }
-
         Connections {
             target: game
             function onPelletEaten(x, y) {
-                munchSound.play()
+                sfx.playMunch()      // cheap: playback happens in SfxPlayer's thread
             }
             function onPowerPelletEaten(x, y) {
-                powerSound.play()
+                sfx.playPower()
+            }
+        }
+
+        // Frame pacing: log any stall longer than 45 ms while the game is
+        // running, so audio-related hitches can be correlated with the
+        // play() timings below in logcat.
+        Connections {
+            target: game
+            function onActorsChanged() {
+                const now = Date.now()
+                if (lastFrameAt > 0 && game.stateName === "running"
+                        && now - lastFrameAt > 45) {
+                    console.log("frame gap " + (now - lastFrameAt) + "ms")
+                }
+                lastFrameAt = now
             }
         }
 
