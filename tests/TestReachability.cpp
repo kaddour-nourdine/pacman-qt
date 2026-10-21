@@ -28,14 +28,18 @@ std::vector<std::vector<bool>> reachability(const Level& level, bool passDoors) 
     const int dxs[] = {1, -1, 0, 0};
     const int dys[] = {0, 0, 1, -1};
     while (!q.empty()) {
-        auto [x, y] = q.front(); q.pop();
+        auto [x, y] = q.front();
+        q.pop();
         for (int i = 0; i < 4; ++i) {
             int nx = x + dxs[i];
             int ny = y + dys[i];
-            if (ny < 0 || ny >= rows) continue;
+            if (ny < 0 || ny >= rows)
+                continue;
             int wx = m.wrapX(nx, ny);
-            if (wx < 0 || wx >= cols) continue;
-            if (vis[ny][wx]) continue;
+            if (wx < 0 || wx >= cols)
+                continue;
+            if (vis[ny][wx])
+                continue;
             if (m.canEnter(wx, ny, passDoors)) {
                 vis[ny][wx] = true;
                 q.push({wx, ny});
@@ -49,8 +53,10 @@ std::vector<std::vector<bool>> reachability(const Level& level, bool passDoors) 
 PAC_TEST(Level, playerReachabilityAllLevelFiles) {
     const std::filesystem::path levelsDir = std::filesystem::path(PACMAN_LEVELS_DIR);
     for (const auto& entry : std::filesystem::directory_iterator(levelsDir)) {
-        if (!entry.is_regular_file()) continue;
-        if (entry.path().extension() != ".txt") continue;
+        if (!entry.is_regular_file())
+            continue;
+        if (entry.path().extension() != ".txt")
+            continue;
         Level level;
         std::string error;
         CHECK(Level::loadFile(entry.path().string(), level, &error));
@@ -65,7 +71,9 @@ PAC_TEST(Level, playerReachabilityAllLevelFiles) {
                 Tile t = level.tileAt(x, y);
                 if (hasPellet(t) || t == Tile::Fruit) {
                     if (!vis[y][x]) {
-                        pactest::reportFailure(__FILE__, __LINE__, entry.path().string() + " has unreachable item at " + std::to_string(x) + "," + std::to_string(y));
+                        pactest::reportFailure(__FILE__, __LINE__,
+                                               entry.path().string() + " has unreachable item at " +
+                                                   std::to_string(x) + "," + std::to_string(y));
                     }
                 }
                 if (t == Tile::Door) {
@@ -73,8 +81,8 @@ PAC_TEST(Level, playerReachabilityAllLevelFiles) {
                 }
             }
         }
-        // player should not reach inside house interior behind door? 
-        // simple check: tiles marked as ' ' inside house bounds in known layouts? 
+        // player should not reach inside house interior behind door?
+        // simple check: tiles marked as ' ' inside house bounds in known layouts?
         // but we just ensure structure valid; core invariant is no unreachable pellets
     }
 }

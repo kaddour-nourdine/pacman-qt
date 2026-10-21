@@ -14,7 +14,7 @@ Maze ring() {
     return Maze(pactest::makeLevel(pactest::ringMap(), __FILE__, __LINE__));
 }
 
-}  // namespace
+} // namespace
 
 PAC_TEST(Player, spawnsFromLevel) {
     Maze maze = layout();

@@ -27,11 +27,12 @@ void checkTrue(bool value, const char* expression, const char* file, int line) {
     }
 }
 
-void checkNear(double actual, double expected, double epsilon, const char* actualExpr, const char* expectedExpr,
-               const char* file, int line) {
+void checkNear(double actual, double expected, double epsilon, const char* actualExpr,
+               const char* expectedExpr, const char* file, int line) {
     if (std::fabs(actual - expected) > epsilon) {
         char buffer[256];
-        std::snprintf(buffer, sizeof(buffer), "%s ~= %s (%f != %f)", actualExpr, expectedExpr, actual, expected);
+        std::snprintf(buffer, sizeof(buffer), "%s ~= %s (%f != %f)", actualExpr, expectedExpr,
+                      actual, expected);
         reportFailure(file, line, buffer);
     }
 }
@@ -63,7 +64,7 @@ int runAll(const char* suiteFilter) {
     return failed == 0 ? 0 : 1;
 }
 
-}  // namespace pactest
+} // namespace pactest
 
 int main(int argc, char** argv) {
     const char* suite = argc > 1 ? argv[1] : nullptr;

@@ -15,10 +15,9 @@ namespace {
 // The three helpers are protected in Entity, so a probe is the only way to
 // call them.
 class Probe : public Entity {
-public:
+  public:
     Probe(Maze& maze, Vec2 position, Direction direction, float speed)
-        : Entity(maze, position, direction, speed) {
-    }
+        : Entity(maze, position, direction, speed) {}
 
     void moveBy(float distance) { advance(distance); }
     float toNextCenter() const { return distanceToNextCenter(); }
@@ -36,7 +35,7 @@ Maze corridor() {
     return Maze(pactest::makeLevel(pactest::ringMap(), __FILE__, __LINE__));
 }
 
-}  // namespace
+} // namespace
 
 PAC_TEST(Entity, ignoresANonPositiveDelta) {
     Maze maze = openMap();

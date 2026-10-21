@@ -6,7 +6,7 @@ namespace {
 
 constexpr int kPointValues[4] = {200, 400, 800, 1600};
 
-}  // namespace
+} // namespace
 
 const char* toString(GhostId id) {
     switch (id) {
@@ -38,13 +38,10 @@ const char* toString(GhostMode mode) {
     return "eyes";
 }
 
-Ghost::Ghost(Maze& maze, GhostId id, int spawnX, int spawnY, Direction spawnDirection, Random* random)
-    : Entity(maze, tileCenterOf(spawnX, spawnY), spawnDirection, 0.0f),
-      id_(id),
-      spawnX_(spawnX),
-      spawnY_(spawnY),
-      spawnDirection_(spawnDirection),
-      random_(random) {
+Ghost::Ghost(Maze& maze, GhostId id, int spawnX, int spawnY, Direction spawnDirection,
+             Random* random)
+    : Entity(maze, tileCenterOf(spawnX, spawnY), spawnDirection, 0.0f), id_(id), spawnX_(spawnX),
+      spawnY_(spawnY), spawnDirection_(spawnDirection), random_(random) {
     reset();
 }
 
@@ -243,4 +240,4 @@ bool Ghost::forbidUpwardTurn() const {
     return ty == 5 && tx >= 8 && tx <= 11;
 }
 
-}
+} // namespace pac

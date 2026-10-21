@@ -10,9 +10,11 @@ enum class Direction {
     Left,
 };
 
-inline constexpr Direction kDirections[] = {Direction::Up, Direction::Right, Direction::Down, Direction::Left};
+inline constexpr Direction kDirections[] = {Direction::Up, Direction::Right, Direction::Down,
+                                            Direction::Left};
 
-inline constexpr Direction kGhostPreference[] = {Direction::Up, Direction::Left, Direction::Down, Direction::Right};
+inline constexpr Direction kGhostPreference[] = {Direction::Up, Direction::Left, Direction::Down,
+                                                 Direction::Right};
 
 constexpr bool isHorizontal(Direction d) {
     return d == Direction::Left || d == Direction::Right;
@@ -92,4 +94,4 @@ constexpr const char* toString(Direction d) {
     return "none";
 }
 
-}
+} // namespace pac

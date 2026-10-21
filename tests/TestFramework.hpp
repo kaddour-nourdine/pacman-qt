@@ -22,12 +22,12 @@ struct Registrar {
 };
 
 void checkTrue(bool value, const char* expression, const char* file, int line);
-void checkNear(double actual, double expected, double epsilon, const char* actualExpr, const char* expectedExpr,
-               const char* file, int line);
+void checkNear(double actual, double expected, double epsilon, const char* actualExpr,
+               const char* expectedExpr, const char* file, int line);
 
 template <typename A, typename B>
-void checkEqualTyped(const A& actual, const B& expected, const char* actualExpr, const char* expectedExpr,
-                     const char* file, int line) {
+void checkEqualTyped(const A& actual, const B& expected, const char* actualExpr,
+                     const char* expectedExpr, const char* file, int line) {
     if (static_cast<long long>(actual) == static_cast<long long>(expected)) {
         return;
     }
@@ -39,18 +39,18 @@ void checkEqualTyped(const A& actual, const B& expected, const char* actualExpr,
 
 int runAll(const char* suiteFilter);
 
-}
+} // namespace pactest
 
-#define PAC_TEST(suite, name)                                                              \
-    static void suite##_##name##_body();                                                   \
-    static const pactest::Registrar suite##_##name##_registrar(#suite, #name,              \
-                                                               &suite##_##name##_body);    \
+#define PAC_TEST(suite, name)                                                                      \
+    static void suite##_##name##_body();                                                           \
+    static const pactest::Registrar suite##_##name##_registrar(#suite, #name,                      \
+                                                               &suite##_##name##_body);            \
     static void suite##_##name##_body()
 
 #define CHECK(expr) pactest::checkTrue(static_cast<bool>(expr), #expr, __FILE__, __LINE__)
 
-#define CHECK_EQ(actual, expected) \
+#define CHECK_EQ(actual, expected)                                                                 \
     pactest::checkEqualTyped((actual), (expected), #actual, #expected, __FILE__, __LINE__)
 
-#define CHECK_NEAR(actual, expected, epsilon) \
+#define CHECK_NEAR(actual, expected, epsilon)                                                      \
     pactest::checkNear((actual), (expected), (epsilon), #actual, #expected, __FILE__, __LINE__)

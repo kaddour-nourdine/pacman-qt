@@ -22,4 +22,4 @@ struct Event {
     int value = 0;
 };
 
-}
+} // namespace pac

@@ -18,7 +18,7 @@ bool rejects(const std::vector<std::string>& lines) {
     return !Level::parse(lines, level, &error);
 }
 
-}  // namespace
+} // namespace
 
 PAC_TEST(Level, parsesGeometryAndMarkers) {
     const Level level = MAKE_LEVEL(pactest::layoutMap());
@@ -43,19 +43,10 @@ PAC_TEST(Level, parsesGeometryAndMarkers) {
 }
 
 PAC_TEST(Level, appliesHeaderOptions) {
-    const Level level = MAKE_LEVEL("name = Test Level",
-                                   "playerSpeed = 7.5",
-                                   "ghostSpeed = 4.25",
-                                   "frightenedSpeed = 3.0",
-                                   "tunnelSpeed = 2.0",
-                                   "eyesSpeed = 18.0",
-                                   "frightenedSeconds = 9.5",
-                                   "startingLives = 2",
-                                   "modeSchedule = 1,2,3",
-                                   "",
-                                   "#####",
-                                   "#P..#",
-                                   "#####");
+    const Level level = MAKE_LEVEL("name = Test Level", "playerSpeed = 7.5", "ghostSpeed = 4.25",
+                                   "frightenedSpeed = 3.0", "tunnelSpeed = 2.0", "eyesSpeed = 18.0",
+                                   "frightenedSeconds = 9.5", "startingLives = 2",
+                                   "modeSchedule = 1,2,3", "", "#####", "#P..#", "#####");
     CHECK(level.name() == "Test Level");
     CHECK_NEAR(level.config().playerSpeed, 7.5, 1e-6);
     CHECK_NEAR(level.config().ghostSpeed, 4.25, 1e-6);
@@ -120,11 +111,8 @@ PAC_TEST(Level, parsesIndependentlyOfNumericLocale) {
     if (applied == nullptr) {
         return;
     }
-    const Level level = MAKE_LEVEL("playerSpeed = 7.5",
-                                   "ghostSpeed = 4.25",
-                                   "#####",
-                                   "#P..#",
-                                   "#####");
+    const Level level =
+        MAKE_LEVEL("playerSpeed = 7.5", "ghostSpeed = 4.25", "#####", "#P..#", "#####");
     std::setlocale(LC_NUMERIC, "C");
     CHECK_NEAR(level.config().playerSpeed, 7.5, 1e-6);
     CHECK_NEAR(level.config().ghostSpeed, 4.25, 1e-6);

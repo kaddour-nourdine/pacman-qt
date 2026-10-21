@@ -43,7 +43,7 @@ bool parseFloat(const std::string& text, float& out) {
         return false;
     }
     std::string rest;
-    std::getline(stream, rest);  // everything after the number must be empty
+    std::getline(stream, rest); // everything after the number must be empty
     if (!rest.empty()) {
         return false;
     }
@@ -82,8 +82,8 @@ std::vector<std::string> splitCommas(const std::string& text) {
     return parts;
 }
 
-bool applyHeaderEntry(const std::string& key, const std::string& value, LevelConfig& config, std::string& name,
-                      std::string* error) {
+bool applyHeaderEntry(const std::string& key, const std::string& value, LevelConfig& config,
+                      std::string& name, std::string* error) {
     const std::string bad = "invalid value for '" + key + "': '" + value + "'";
 
     if (key == "name") {
@@ -166,7 +166,7 @@ bool applyHeaderEntry(const std::string& key, const std::string& value, LevelCon
     return fail(error, "unknown level option '" + key + "'");
 }
 
-}  // namespace
+} // namespace
 
 bool Level::parse(const std::vector<std::string>& lines, Level& out, std::string* error) {
     Level level;
@@ -229,7 +229,8 @@ bool Level::parse(const std::vector<std::string>& lines, Level& out, std::string
     const int rows = static_cast<int>(mapRows.size());
     level.cols_ = cols;
     level.rows_ = rows;
-    level.tiles_.assign(static_cast<std::size_t>(cols) * static_cast<std::size_t>(rows), Tile::Empty);
+    level.tiles_.assign(static_cast<std::size_t>(cols) * static_cast<std::size_t>(rows),
+                        Tile::Empty);
 
     std::array<GhostSpawn, kGhostCount> ghosts{};
     std::array<bool, kGhostCount> ghostSeen{};
@@ -248,7 +249,8 @@ bool Level::parse(const std::vector<std::string>& lines, Level& out, std::string
             if (isGhostMarker(c)) {
                 const int index = c - '1';
                 if (ghostSeen[static_cast<std::size_t>(index)]) {
-                    return fail(error, std::string("map has more than one ghost marker '") + c + "'");
+                    return fail(error,
+                                std::string("map has more than one ghost marker '") + c + "'");
                 }
                 GhostSpawn spawn;
                 spawn.x = x;
@@ -260,7 +262,8 @@ bool Level::parse(const std::vector<std::string>& lines, Level& out, std::string
                 continue;
             }
             const Tile tile = charToTile(c);
-            level.tiles_[static_cast<std::size_t>(y) * static_cast<std::size_t>(cols) + static_cast<std::size_t>(x)] = tile;
+            level.tiles_[static_cast<std::size_t>(y) * static_cast<std::size_t>(cols) +
+                         static_cast<std::size_t>(x)] = tile;
             if (hasPellet(tile)) {
                 ++level.pelletCount_;
             }
@@ -321,4 +324,4 @@ bool Level::loadFile(const std::string& path, Level& out, std::string* error) {
     return parse(lines, out, error);
 }
 
-}
+} // namespace pac

@@ -127,6 +127,7 @@ PAC_TEST(Engine, isReproducible) {
     CHECK_EQ(first.state(), second.state());
     CHECK_EQ(first.score(), second.score());
     CHECK_EQ(first.lives(), second.lives());
-    CHECK_EQ(static_cast<long long>(engineA.stepCount()), static_cast<long long>(engineB.stepCount()));
+    CHECK_EQ(static_cast<long long>(engineA.stepCount()),
+             static_cast<long long>(engineB.stepCount()));
     CHECK(nearlyEquals(first.player().position(), second.player().position(), 1e-6f));
 }

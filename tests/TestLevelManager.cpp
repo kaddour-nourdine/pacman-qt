@@ -18,28 +18,25 @@ Level roomLevel(const std::vector<std::string>& rows) {
     return pactest::makeLevel(rows, __FILE__, __LINE__);
 }
 
-const char* kAlphaLevel =
-    "name = Alpha\n"
-    "#####\n"
-    "#P..#\n"
-    "#o..#\n"
-    "#####\n";
+const char* kAlphaLevel = "name = Alpha\n"
+                          "#####\n"
+                          "#P..#\n"
+                          "#o..#\n"
+                          "#####\n";
 
-const char* kBetaLevel =
-    "name = Beta\n"
-    "#####\n"
-    "#P..#\n"
-    "#.o.#\n"
-    "#####\n";
+const char* kBetaLevel = "name = Beta\n"
+                         "#####\n"
+                         "#P..#\n"
+                         "#.o.#\n"
+                         "#####\n";
 
-const char* kBrokenLevel =
-    "name = Broken\n"
-    "#####\n"
-    "#P.x#\n"
-    "#####\n";
+const char* kBrokenLevel = "name = Broken\n"
+                           "#####\n"
+                           "#P.x#\n"
+                           "#####\n";
 
 class TempLevelsDir {
-public:
+  public:
     explicit TempLevelsDir(const char* name)
         : path_(fs::temp_directory_path() / ("pacman_levels_" + std::string(name))) {
         std::error_code ec;
@@ -62,11 +59,11 @@ public:
         stream << content;
     }
 
-private:
+  private:
     fs::path path_;
 };
 
-}  // namespace
+} // namespace
 
 PAC_TEST(LevelManager, startsEmpty) {
     const LevelManager manager;

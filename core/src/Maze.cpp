@@ -12,8 +12,8 @@ Maze::Maze(Level level) : level_(std::move(level)) {
     base_.assign(count, Tile::Wall);
     for (int y = 0; y < rows_; ++y) {
         for (int x = 0; x < cols_; ++x) {
-            base_[static_cast<std::size_t>(y) * static_cast<std::size_t>(cols_) + static_cast<std::size_t>(x)] =
-                level_.tileAt(x, y);
+            base_[static_cast<std::size_t>(y) * static_cast<std::size_t>(cols_) +
+                  static_cast<std::size_t>(x)] = level_.tileAt(x, y);
         }
     }
     resetPellets();
@@ -40,7 +40,8 @@ Tile Maze::rawTile(int x, int y) const {
     if (x < 0 || x >= cols_ || y < 0 || y >= rows_) {
         return Tile::Wall;
     }
-    return base_[static_cast<std::size_t>(y) * static_cast<std::size_t>(cols_) + static_cast<std::size_t>(x)];
+    return base_[static_cast<std::size_t>(y) * static_cast<std::size_t>(cols_) +
+                 static_cast<std::size_t>(x)];
 }
 
 int Maze::wrapX(int x, int y) const {
@@ -68,7 +69,8 @@ Tile Maze::tileAt(int x, int y) const {
     if (wrapped < 0 || wrapped >= cols_) {
         return Tile::Wall;
     }
-    return tiles_[static_cast<std::size_t>(y) * static_cast<std::size_t>(cols_) + static_cast<std::size_t>(wrapped)];
+    return tiles_[static_cast<std::size_t>(y) * static_cast<std::size_t>(cols_) +
+                  static_cast<std::size_t>(wrapped)];
 }
 
 Tile Maze::tileAt(Vec2 position) const {
@@ -122,7 +124,8 @@ Tile Maze::takePellet(int x, int y) {
     if (wrapped < 0 || wrapped >= cols_) {
         return Tile::Empty;
     }
-    Tile& tile = tiles_[static_cast<std::size_t>(y) * static_cast<std::size_t>(cols_) + static_cast<std::size_t>(wrapped)];
+    Tile& tile = tiles_[static_cast<std::size_t>(y) * static_cast<std::size_t>(cols_) +
+                        static_cast<std::size_t>(wrapped)];
     if (hasPellet(tile)) {
         const Tile taken = tile;
         tile = Tile::Empty;
@@ -213,4 +216,4 @@ Direction Maze::stepToward(int fromX, int fromY, int toX, int toY, bool passDoor
     return Direction::None;
 }
 
-}
+} // namespace pac

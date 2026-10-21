@@ -86,7 +86,7 @@ std::vector<std::string> replayMap() {
 // FNV-1a: a small, dependency-free digest. It only has to be stable, not
 // cryptographic.
 class Digest {
-public:
+  public:
     void add(std::uint64_t value) {
         for (int byte = 0; byte < 8; ++byte) {
             state_ ^= static_cast<std::uint8_t>((value >> (byte * 8)) & 0xffu);
@@ -96,7 +96,7 @@ public:
 
     std::uint64_t value() const { return state_; }
 
-private:
+  private:
     std::uint64_t state_ = 1469598103934665603ull;
 };
 
@@ -106,7 +106,8 @@ private:
 // still must. One tile is 64 units, and an entity moves at least 3.5/120 of
 // a tile per step, so a single step of drift is still visible.
 std::int64_t quantized(float value, float scale) {
-    return static_cast<std::int64_t>(std::llround(static_cast<double>(value) * static_cast<double>(scale)));
+    return static_cast<std::int64_t>(
+        std::llround(static_cast<double>(value) * static_cast<double>(scale)));
 }
 
 // The discrete part of the state: everything that is an exact number.
@@ -175,23 +176,15 @@ struct Input {
 
 const std::vector<Input>& inputLog() {
     static const std::vector<Input> log = {
-        {0, pac::Direction::Right},    // along the top corridor to x = 9
-        {70, pac::Direction::Down},    // down the right corridor
-        {170, pac::Direction::Left},   // onto the power pellet
-        {260, pac::Direction::Up},     // back up, to the fruit corridor
-        {420, pac::Direction::Left},   // to the fruit
-        {560, pac::Direction::Up},
-        {700, pac::Direction::Right},
-        {860, pac::Direction::Down},
-        {1020, pac::Direction::Left},
-        {1200, pac::Direction::Up},
-        {1400, pac::Direction::Right},
-        {1600, pac::Direction::Down},
-        {1800, pac::Direction::Left},
-        {2000, pac::Direction::Up},
-        {2200, pac::Direction::Right},
-        {2400, pac::Direction::Down},
-        {2600, pac::Direction::Left},
+        {0, pac::Direction::Right},  // along the top corridor to x = 9
+        {70, pac::Direction::Down},  // down the right corridor
+        {170, pac::Direction::Left}, // onto the power pellet
+        {260, pac::Direction::Up},   // back up, to the fruit corridor
+        {420, pac::Direction::Left}, // to the fruit
+        {560, pac::Direction::Up},     {700, pac::Direction::Right}, {860, pac::Direction::Down},
+        {1020, pac::Direction::Left},  {1200, pac::Direction::Up},   {1400, pac::Direction::Right},
+        {1600, pac::Direction::Down},  {1800, pac::Direction::Left}, {2000, pac::Direction::Up},
+        {2200, pac::Direction::Right}, {2400, pac::Direction::Down}, {2600, pac::Direction::Left},
     };
     return log;
 }
@@ -260,7 +253,8 @@ ReplayResult replay(const pac::Level& level, std::uint32_t seed, int steps) {
         }
         // The counters of the player are reset with every life, so the
         // highest number seen is the interesting one.
-        result.powerPelletsEaten = std::max(result.powerPelletsEaten, game.player().powerPelletsEaten());
+        result.powerPelletsEaten =
+            std::max(result.powerPelletsEaten, game.player().powerPelletsEaten());
     }
 
     Digest digest = trajectory;
@@ -275,7 +269,7 @@ ReplayResult replay(const pac::Level& level, std::uint32_t seed, int steps) {
     return result;
 }
 
-}  // namespace
+} // namespace
 
 // Two identical replays must produce the same digest. This is the check
 // against a hidden dependency on the clock, on memory addresses or on an
