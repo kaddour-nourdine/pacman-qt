@@ -58,6 +58,28 @@ private slots:
 
         QCOMPARE(static_cast<int>(controller.directionForTest()), 2);
     }
+
+    void testMixerFeedsTheAudioSink() {
+        // Regression guard. Qt's audio pipeline only pulls from a user
+        // QIODevice when it reports data (pullFromQIODeviceToRingbuffer()
+        // gives up when bytesAvailable() == 0). A plain QIODevice reports 0
+        // forever, so the sink idled without ever reading a frame and the
+        // game was silent - found on the phone, invisible on the desktop.
+        SfxPlayer sfx;
+        if (!sfx.hasSink()) {
+            QSKIP("no audio output device on this machine");
+        }
+
+        sfx.playMunch();
+        QCOMPARE(sfx.voicesStarted(), 1);
+
+        // The sink pulls on its own thread; give it a few callbacks.
+        QTest::qWait(500);
+
+        QVERIFY2(sfx.framesWritten() > 0,
+                 "the audio sink never read a single frame from the mixer");
+        QVERIFY2(sfx.peakLevel() > 0.0f, "the mixer produced silence only");
+    }
 };
 
 QTEST_MAIN(ViewTest)
