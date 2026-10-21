@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  core:
+    name: Core model, tools and tests (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake
+
+      - name: Configure
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_FLAGS="-Werror" \
+            -DPACMAN_BUILD_TESTS=ON \
+            -DPACMAN_BUILD_TOOLS=ON \
+            -DPACMAN_BUILD_APP=OFF
+
+      - name: Build
+        run: cmake --build build --parallel "$(nproc)"
+
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure
+
+  qt:
+    name: Qt Quick view and headless tests (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: '6.8'
+          modules: 'qtbase qtdeclarative qtmultimedia'
+
+      - name: Configure
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_FLAGS="-Werror" \
+            -DPACMAN_BUILD_APP=ON \
+            -DPACMAN_BUILD_TESTS=ON \
+            -DPACMAN_BUILD_TOOLS=OFF \
+            -DPACMAN_BUILD_QT_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --parallel "$(nproc)"
+
+      - name: Run tests
+        run: |
+          export QT_QPA_PLATFORM=offscreen
+          ctest --test-dir build --output-on-failure
