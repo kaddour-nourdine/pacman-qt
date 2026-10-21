@@ -510,6 +510,21 @@ every speed and every mode phase is positive. The seed is fixed, so a run is rep
 `--iterations`, `--seed`, `--corpus DIR` and `--stdin` (cases separated by a line with only
 `%%`) change what it does. It is registered as the `LevelFuzz` CTest test.
 
+### `tools/pacman_bench/pacman_bench.cpp`
+
+Measures the two things in the model that could get slow. It is **not** a CTest test — timings
+belong to a machine, not a repository, so it is run by hand.
+
+The first pass times `Maze::stepToward` on the real `level1` and on synthetic mazes of every size
+(up to 100×100, which is over 23× the shipped map): the shortest search ("next tile"), a pair of
+random walkable tiles (the average case), and corner to corner (the ceiling). It shows that the
+cost is the walk at ~29 ns per cell, and that four vectors allocated per call on `Maze.cpp:155-160`
+account for only 0.3–2 % of a search. The second pass steps the game the way `app/` does (120
+steps per second, random input requests, a restart on death) with normal ghosts and with all
+four ghosts forced into eyes mode every 300 steps, counting only the steps taken while the
+game is running. The numbers and the conclusion — no caching needed — live in
+[`performance.md`](performance.md).
+
 ### `tools/coverage.sh`
 
 Not a tool in the CMake sense — a shell script that runs the coverage report. It configures a

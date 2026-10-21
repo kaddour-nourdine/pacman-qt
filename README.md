@@ -55,6 +55,7 @@ cmake -S . -B build -DPACMAN_BUILD_APP=ON -DPACMAN_BUILD_QT_TESTS=ON   # also bu
 ./build/tests/pacman_tests            # run every test, pretty output
 ./build/tests/pacman_tests Ghost      # run one suite
 ./tools/coverage.sh                   # coverage report of the model (needs gcovr)
+./build/tools/pacman_bench/pacman_bench  # performance baseline (optional, run by hand)
 ```
 
 `pacman_tests` prints one line per test (`ok` / `FAIL`) and returns a non-zero exit code if
@@ -112,6 +113,7 @@ tools/
   pacman_text/              a terminal renderer you can actually play
   ai_demo/                  a small scripted run of the engine
   pacman_fuzz/              a fuzzer for the level parser
+  pacman_bench/             measures path search and simulation throughput
   coverage.sh               builds with coverage counters and reports via gcovr
 levels/
   level1.txt, level2.txt, level3.txt  the playable levels, written in a plain ASCII
@@ -172,6 +174,8 @@ Supporting documents:
 - [`docs/testing.md`](docs/testing.md) — how the test harness works and how to add a test.
 - [`docs/coverage.md`](docs/coverage.md) — the coverage baseline of the model (`./tools/coverage.sh`)
   and why every branch no test takes cannot be reached.
+- [`docs/performance.md`](docs/performance.md) — the performance baseline for the path search and
+  the simulation (`./build/tools/pacman_bench/pacman_bench`).
 - [`docs/view-implementation.md`](docs/view-implementation.md) — complete documentation of the
   Qt Quick view (Phase 4), including architecture, components, design decisions, and testing.
 
