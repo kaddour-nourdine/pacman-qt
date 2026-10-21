@@ -55,7 +55,7 @@ cmake -S . -B build -DPACMAN_BUILD_APP=ON -DPACMAN_BUILD_QT_TESTS=ON && cmake --
 ### Model polish (documented as intentional differences)
 - [x] **Ghost house release timers** (M): released ghosts now use `GhostMode::LeavingHouse` to exit through the door before switching to normal AI; unreleased ghosts stay in the house. (Still pellet-based thresholds: Blinky 0, Pinky 30, Inky 60, Clyde 90.)
 - [x] **Blinky bounce quirk** (S): disabled `forbidUpwardTurn()` (returns `false`); the restriction was tuned for an older layout and made Blinky reverse into the house. Determinism golden value regenerated.
-- [ ] **Pixel-accurate collision** (M, optional): currently tile-based by design.
+- [x] **Pixel-accurate collision** (M, optional): **deferred by decision** — keep tile-based collision as designed (documented in `docs/gameplay-rules.md` §7). Revisit only as a deliberate fidelity decision.
 
 ### Long-term
 - [ ] **CI expansion** (M): add a job that builds the Qt app under `qt-qemu`/offscreen (already covered by the offscreen job; qemu optional).

@@ -208,4 +208,6 @@ fidelity work remains:
    list produces `GameOver`. The next level's tuning (speeds, schedule, frightened seconds)
    takes effect when loaded.
 9. **Extra lives** at 10 000-point thresholds are implemented (see `Game::collectPellet`/`checkCollisions`).
-10. **Collisions are per tile**, not per pixel (see §7).
+10. **Collisions are per tile**, not per pixel (see §7). **Decision (2026-10):** kept
+    tile-based by design; pixel-accurate overlap is deferred (optional, high-risk, would
+    change core collision logic and the determinism baseline).
