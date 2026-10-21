@@ -92,6 +92,8 @@ public:
 
     Q_INVOKABLE void playMunch();
     Q_INVOKABLE void playPower();
+    Q_INVOKABLE void playGhostEaten();
+    Q_INVOKABLE void playDeath();
 
     // Mute switch. The mixer keeps running (the sink stays open, so
     // un-muting is instant), but no voice is started while disabled.
@@ -115,8 +117,12 @@ private:
     std::unique_ptr<QAudioSink> m_sink;
     QVector<float> m_munch;
     QVector<float> m_power;
+    QVector<float> m_ghostEaten;
+    QVector<float> m_death;
     int m_munchRate = 0;
     int m_powerRate = 0;
+    int m_ghostEatenRate = 0;
+    int m_deathRate = 0;
     QAudioFormat m_format;
     QString m_deviceName;
     qint64 m_lastStatusMs = 0;

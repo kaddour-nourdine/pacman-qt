@@ -252,7 +252,10 @@ qint64 SfxMixer::writeData(const char*, qint64) {
 
 SfxPlayer::SfxPlayer(QObject* parent) : QObject(parent) {
     if (!m_mixer.loadWav(QStringLiteral(":/assets/audio/munch.wav"), &m_munch, &m_munchRate) ||
-        !m_mixer.loadWav(QStringLiteral(":/assets/audio/power.wav"), &m_power, &m_powerRate)) {
+        !m_mixer.loadWav(QStringLiteral(":/assets/audio/power.wav"), &m_power, &m_powerRate) ||
+        !m_mixer.loadWav(QStringLiteral(":/assets/audio/ghost_eaten.wav"), &m_ghostEaten,
+                         &m_ghostEatenRate) ||
+        !m_mixer.loadWav(QStringLiteral(":/assets/audio/death.wav"), &m_death, &m_deathRate)) {
         return;
     }
 
@@ -352,4 +355,12 @@ void SfxPlayer::playMunch() {
 
 void SfxPlayer::playPower() {
     trigger(m_power, m_powerRate);
+}
+
+void SfxPlayer::playGhostEaten() {
+    trigger(m_ghostEaten, m_ghostEatenRate);
+}
+
+void SfxPlayer::playDeath() {
+    trigger(m_death, m_deathRate);
 }

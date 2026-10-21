@@ -178,7 +178,7 @@ The build file creates **two targets**:
 **Resource Files** (embedded via `qt_add_resources`):
 - Sprites: `assets/sprites/*.svg` (tiles, pacman, ghosts, eyes, life icon)
 - Icons: `assets/icons/pacman.svg`
-- Audio: `assets/audio/munch.wav`, `assets/audio/power.wav`
+- Audio: `assets/audio/munch.wav`, `assets/audio/power.wav`, `assets/audio/ghost_eaten.wav`, `assets/audio/death.wav`
 
 The resources are embedded with prefix `/`, making them accessible via `qrc:/` paths in QML.
 
@@ -464,7 +464,7 @@ Connections {
 
 | Piece | Role |
 | --- | --- |
-| `SfxPlayer` | QML-facing object (`sfx` context property): opens the sink, decodes the WAVs, exposes `playMunch()` / `playPower()` and the health counters |
+| `SfxPlayer` | QML-facing object (`sfx` context property): opens the sink, decodes the WAVs, exposes `playMunch()` / `playPower()` / `playGhostEaten()` / `playDeath()` and the health counters |
 | `SfxMixer` | a `QIODevice` that mixes up to 4 voices (linear resampling) into the sink's format (Int16/Int32/Float/UInt8) |
 | `QAudioSink` | opened **once** at startup and fed until the app exits — nothing is started or stopped during gameplay |
 
@@ -805,7 +805,7 @@ Phase 4 is considered complete when:
 
 These are documented limitations of the Phase 4 implementation:
 
-1. **Audio**: Only two sound effects implemented (munch, power). Ghost eaten, death, and other sounds are TODO.
+1. **Audio**: Four sound effects implemented (munch, power, ghost eaten, death). Further arcade sounds (start jingle, fruit, etc.) are TODO.
 2. **Display Verification**: The Qt app has only been verified headless (`offscreen`). Real display testing is needed.
 3. **Locale**: Level parsing uses `std::from_chars` to avoid locale issues with decimal separators (fixed in Phase 4).
 4. **Sprite Sheet**: The planned packed sprite sheet was cancelled in favor of vector rendering.

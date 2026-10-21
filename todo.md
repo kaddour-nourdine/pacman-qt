@@ -49,7 +49,7 @@ cmake -S . -B build -DPACMAN_BUILD_APP=ON -DPACMAN_BUILD_QT_TESTS=ON && cmake --
 ### Android polish
 - [ ] **Release signing** (S): replace the shared debug keystore with a real key.
 - [ ] **Perf diagnostics** (S): decide keep-vs-remove (they only log on anomalies).
-- [ ] **Extra audio effects** (M): ghost-eaten and death sounds (only munch + power exist today).
+- [x] **Extra audio effects** (M): added `ghost_eaten.wav` (rising arpeggio) and `death.wav` (descending tone), wired through `SfxPlayer::playGhostEaten()` / `playDeath()` and the QML `ghostEaten` / `playerDied` signals.
 - [ ] **Desktop display check** (S): verify the Qt app on a real display (only `offscreen` tested so far).
 
 ### Model polish (documented as intentional differences)

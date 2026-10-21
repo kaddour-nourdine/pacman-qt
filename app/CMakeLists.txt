@@ -44,6 +44,8 @@ qt_add_resources(pacman_view "pacman_assets"
         assets/sprites/life.svg
         assets/audio/munch.wav
         assets/audio/power.wav
+        assets/audio/ghost_eaten.wav
+        assets/audio/death.wav
 )
 
 # The campaign travels inside the binary as well: PACMAN_LEVELS_DIR only points
