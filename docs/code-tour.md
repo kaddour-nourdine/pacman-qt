@@ -510,6 +510,15 @@ every speed and every mode phase is positive. The seed is fixed, so a run is rep
 `--iterations`, `--seed`, `--corpus DIR` and `--stdin` (cases separated by a line with only
 `%%`) change what it does. It is registered as the `LevelFuzz` CTest test.
 
+### `tools/coverage.sh`
+
+Not a tool in the CMake sense — a shell script that runs the coverage report. It configures a
+`Debug` build with the compiler's counters (`--coverage -O0 -g`), builds, runs the whole CTest
+suite and then asks `gcovr` for the report over `core/src`, finally writing an HTML report to
+`build-cov/coverage/index.html`. The baseline it prints — lines, branches and functions, per
+file — and the reason behind every branch no test takes live in
+[`coverage.md`](coverage.md). It needs `gcovr`.
+
 ---
 
 ## The application (`app/`)
@@ -617,15 +626,19 @@ Described in detail in [`testing.md`](testing.md). In short:
 | --- | --- |
 | `tests/TestFramework.hpp` | registry, assertions, `PAC_TEST`/`CHECK*` macros |
 | `tests/TestMain.cpp` | `registry()`, `runAll()`, `main()` |
-| `tests/Fixtures.hpp` | `MAKE_LEVEL` and eight tiny hand-made maps |
+| `tests/Fixtures.hpp` | `MAKE_LEVEL` and nine tiny hand-made maps |
 | `tests/TestPrimitives.cpp` | `Direction`, `Vec2`, `Tile` |
-| `tests/TestLevel.cpp` | parsing, options, every error path, duplicate markers, loading `level1.txt` and every file in `levels/` |
-| `tests/TestLevelManager.cpp` | level list order and wrapping, file/directory loading, all-or-nothing failure |
-| `tests/TestMaze.cpp` | geometry, pellets, doors, tunnels, BFS path finding |
+| `tests/TestLevel.cpp` | parsing, options, every error path (including failing without an error slot), duplicate markers, loading `level1.txt` and every file in `levels/` |
+| `tests/TestLevelManager.cpp` | level list order and wrapping, file/directory loading, all-or-nothing failure, a folder called `*.txt` being skipped |
+| `tests/TestMaze.cpp` | geometry and the tile under a position, pellets, doors, tunnels, BFS path finding — including at the edges of the map and with an empty map |
 | `tests/TestPlayer.cpp` | movement, turning, blocking, wrapping, counters |
-| `tests/TestGhost.cpp` | targets per personality, tie-breaks, reversal, eyes, determinism |
-| `tests/TestGame.cpp` | pellets, power pellets, collisions, lives, level flow, the level list, real level |
+| `tests/TestGhost.cpp` | targets per personality, tie-breaks, reversal, eyes, flashing, choosing without a random source, determinism |
+| `tests/TestEntity.cpp` | the movement primitives on their own: non-positive delta, zero speed, the guard against an absurd speed, everything that is skipped without a direction |
+| `tests/TestGame.cpp` | pellets, power pellets, collisions, lives, level flow, the level list, the extra life, eyes not being released by the schedule, real level |
 | `tests/TestEngine.cpp` | fixed stepping, clamping, time scale, reproducibility |
 | `tests/TestDeterminism.cpp` | replays a recorded input log against a fixed level and seed and digests the whole trajectory against a golden value |
-| `tests/TestReachability.cpp` | separate `pacman_tests_reach` binary: BFS that every pellet/fruit is reachable in every `levels/*.txt` |
+| `tests/TestReachability.cpp` | separate `pacman_tests_reach` binary (registered as the `Reachability` CTest test): BFS that every pellet/fruit is reachable in every `levels/*.txt` |
 | `tests/test_view.cpp` | optional `QtView` QTest (only with `PACMAN_BUILD_QT_TESTS=ON`): QML loads and a key event reaches the controller |
+
+The coverage baseline of `core/src` — 98.1 % of lines, 92.3 % of branches, 100 % of functions —
+is in [`coverage.md`](coverage.md), produced by `tools/coverage.sh`.

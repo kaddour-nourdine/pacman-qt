@@ -192,3 +192,31 @@ PAC_TEST(LevelManager, reportsDirectoryWithoutLevels) {
     CHECK(!error.empty());
     CHECK(manager.isEmpty());
 }
+
+PAC_TEST(LevelManager, reportsFailuresWithoutAnErrorSlot) {
+    // The caller may not care about the message; the load still fails.
+    LevelManager manager;
+    CHECK(!manager.loadDirectory("/does/not/exist", nullptr));
+    CHECK(manager.isEmpty());
+}
+
+PAC_TEST(LevelManager, skipsFoldersThatLookLikeLevels) {
+    const TempLevelsDir dir("folder");
+    dir.write("01_alpha.txt", kAlphaLevel);
+    std::error_code ec;
+    fs::create_directory(fs::path(dir.string()) / "02_beta.txt", ec);
+
+    LevelManager manager;
+    std::string error;
+    CHECK(manager.loadDirectory(dir.string(), &error));
+    CHECK_EQ(manager.levelCount(), 1);
+    CHECK(manager.nameFor(1) == "Alpha");
+}
+
+PAC_TEST(LevelManager, keepsTheEmptyLevelForLaterCalls) {
+    const LevelManager manager;
+    CHECK(!manager.levelFor(1).isValid());
+    CHECK(!manager.levelFor(2).isValid());
+    CHECK(manager.nameFor(1).empty());
+    CHECK(manager.nameFor(2).empty());
+}

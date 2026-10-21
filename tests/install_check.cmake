@@ -43,9 +43,21 @@ run_step("building pacman_core"
 run_step("installing pacman_core"
     ${CMAKE_COMMAND} --install "${BUILD_DIR}" --prefix "${prefix}")
 
+# The consumer is built with the same flags as this build. Without that, a
+# build that instruments the code (--coverage, -fsanitize=...) installs a
+# library that needs a runtime the consumer does not link.
+set(consumer_flags "")
+if(DEFINED CONSUMER_CXX_FLAGS AND NOT CONSUMER_CXX_FLAGS STREQUAL "")
+    list(APPEND consumer_flags "-DCMAKE_CXX_FLAGS=${CONSUMER_CXX_FLAGS}")
+endif()
+if(DEFINED CONSUMER_LINKER_FLAGS AND NOT CONSUMER_LINKER_FLAGS STREQUAL "")
+    list(APPEND consumer_flags "-DCMAKE_EXE_LINKER_FLAGS=${CONSUMER_LINKER_FLAGS}")
+endif()
+
 run_step("configuring the consumer"
     ${CMAKE_COMMAND} -S "${SOURCE_DIR}/tests/install_consumer" -B "${work}/consumer"
-    "-DCMAKE_PREFIX_PATH=${prefix}")
+    "-DCMAKE_PREFIX_PATH=${prefix}"
+    ${consumer_flags})
 
 run_step("building the consumer"
     ${CMAKE_COMMAND} --build "${work}/consumer")

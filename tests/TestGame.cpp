@@ -1,3 +1,4 @@
+#include <string>
 #include <vector>
 
 #include "Fixtures.hpp"
@@ -41,6 +42,66 @@ void collectAllPellets(Game& game) {
             game.step(0.0001f);
         }
     }
+}
+
+// Eats pellets, one at a time, until the given number of them has been
+// eaten. The player is teleported onto each pellet, so only the count
+// matters, not the way there.
+int eatPellets(Game& game, int wanted) {
+    int eaten = 0;
+    for (int y = 0; y < game.maze().rows() && eaten < wanted; ++y) {
+        for (int x = 0; x < game.maze().cols() && eaten < wanted; ++x) {
+            if (!hasPellet(game.maze().tileAt(x, y))) {
+                continue;
+            }
+            game.player().setPosition(tileCenterOf(x, y));
+            game.step(0.0001f);
+            ++eaten;
+        }
+    }
+    return eaten;
+}
+
+// The size of the map built by bigMap().
+constexpr int kBigMapCols = 38;
+constexpr int kBigMapRows = 34;
+
+// Where the power pellet of bigMap() sits: the last interior row, next to
+// the player.
+constexpr int kBigPowerX = kBigMapCols - 3;
+constexpr int kBigPowerY = kBigMapRows - 2;
+
+// A map with more than a thousand pellets -- enough for the score to pass
+// the extra life at 10000 points. The ghosts are sealed in a box in the
+// corner, so they cannot reach the player while it collects them.
+std::vector<std::string> bigMap() {
+    std::vector<std::string> grid(static_cast<std::size_t>(kBigMapRows),
+                                  std::string(static_cast<std::size_t>(kBigMapCols), '#'));
+    for (int y = 1; y < kBigMapRows - 1; ++y) {
+        for (int x = 1; x < kBigMapCols - 1; ++x) {
+            grid[static_cast<std::size_t>(y)][static_cast<std::size_t>(x)] = '.';
+        }
+    }
+    // The house of the ghosts: walls, so that they stay where they are.
+    for (int y = 1; y <= 5; ++y) {
+        for (int x = 1; x <= 7; ++x) {
+            grid[static_cast<std::size_t>(y)][static_cast<std::size_t>(x)] = '#';
+        }
+    }
+    grid[2][2] = '1';
+    grid[2][4] = '2';
+    grid[4][2] = '3';
+    grid[4][4] = '4';
+    grid[kBigPowerY][kBigPowerX] = 'o';
+    grid[kBigPowerY][kBigPowerX + 1] = 'P';
+
+    std::vector<std::string> lines;
+    lines.push_back("name = Big");
+    lines.push_back("");
+    for (const std::string& row : grid) {
+        lines.push_back(row);
+    }
+    return lines;
 }
 
 }  // namespace
@@ -481,3 +542,153 @@ PAC_TEST(Game, ghostsStayOnWalkableTilesAfterMidTileReversal) {
         }
     }
 }
+
+// --- The corners of the rules ---------------------------------------------
+//
+// The tests below cover the branches that the game does not reach on its
+// own: the states the view never shows, the extra life that needs more than
+// a thousand pellets, the ghost that wanders into a tunnel.
+
+PAC_TEST(Game, namesEveryState) {
+    CHECK(std::string(toString(GameState::Ready)) == "ready");
+    CHECK(std::string(toString(GameState::Running)) == "running");
+    CHECK(std::string(toString(GameState::PlayerDied)) == "player-died");
+    CHECK(std::string(toString(GameState::LevelComplete)) == "level-complete");
+    CHECK(std::string(toString(GameState::GameOver)) == "game-over");
+    CHECK(std::string(toString(GlobalMode::Scatter)) == "scatter");
+    CHECK(std::string(toString(GlobalMode::Chase)) == "chase");
+}
+
+PAC_TEST(Game, ignoresANonPositiveDelta) {
+    Game game(pactest::makeLevel(pactest::gameMap(), __FILE__, __LINE__));
+    game.start();
+
+    game.step(0.0f);
+    game.step(-1.0f);
+
+    // Nothing moved, and the game is still the one that was started.
+    CHECK_EQ(game.state(), GameState::Running);
+    CHECK_EQ(game.score(), 0);
+    CHECK_EQ(game.pelletsRemaining(), 34);
+}
+
+PAC_TEST(ModeSchedule, ignoresNegativeTime) {
+    const ModeSchedule schedule;
+    CHECK_EQ(schedule.modeAt(-1.0f), GlobalMode::Scatter);
+    CHECK_EQ(schedule.modeAt(0.0f), GlobalMode::Scatter);
+}
+
+PAC_TEST(ModeSchedule, hasNoPhaseOutsideTheSchedule) {
+    const ModeSchedule schedule;
+    CHECK_NEAR(schedule.phaseDuration(-1), 0.0, 1e-6);
+    CHECK_NEAR(schedule.phaseDuration(99), 0.0, 1e-6);
+    CHECK_NEAR(schedule.phaseDuration(0), 7.0, 1e-6);
+}
+
+PAC_TEST(ModeSchedule, keepsTheLastModeAfterTheEnd) {
+    // A schedule with an odd number of phases ends in scatter, an even one
+    // in chase.
+    const ModeSchedule odd(std::vector<float>{7.0f});
+    CHECK_EQ(odd.modeAt(1000.0f), GlobalMode::Scatter);
+
+    const ModeSchedule even(std::vector<float>{7.0f, 20.0f});
+    CHECK_EQ(even.modeAt(1000.0f), GlobalMode::Chase);
+}
+
+PAC_TEST(Game, aGhostInATunnelMovesSlower) {
+    Game game(pactest::makeLevel(pactest::ringMap(), __FILE__, __LINE__));
+    game.start();
+
+    Ghost& ghost = game.ghosts()[0];
+    ghost.setReleased(true);
+    ghost.setPosition(tileCenterOf(10, 1));
+    CHECK(game.maze().isTunnel(10, 1));
+
+    game.step(0.001f);
+
+    CHECK_NEAR(ghost.speed(), game.maze().level().config().tunnelSpeed, 1e-6);
+    CHECK_NEAR(ghost.speed(), 4.0, 1e-6);
+}
+
+PAC_TEST(Game, theLevelStaysCompleteForAMoment) {
+    Game game(pactest::makeLevel(pactest::gameMap(), __FILE__, __LINE__));
+    game.start();
+    collectAllPellets(game);
+    CHECK_EQ(game.state(), GameState::LevelComplete);
+
+    // The next level does not start right away: the level stays complete
+    // for a moment first.
+    game.step(Game::kLevelCompletePauseSeconds * 0.5f);
+    CHECK_EQ(game.state(), GameState::LevelComplete);
+    CHECK_EQ(game.levelNumber(), 1);
+
+    game.step(Game::kLevelCompletePauseSeconds);
+    CHECK_EQ(game.state(), GameState::Ready);
+    CHECK_EQ(game.levelNumber(), 2);
+}
+
+PAC_TEST(Game, eatingEnoughPelletsGivesAnExtraLife) {
+    Game game(pactest::makeLevel(bigMap(), __FILE__, __LINE__));
+    game.start();
+    const int lives = game.lives();
+
+    collectAllPellets(game);
+
+    CHECK(game.score() >= 10000);
+    CHECK_EQ(game.lives(), lives + 1);
+}
+
+PAC_TEST(Game, eatingAGhostCanGiveAnExtraLife) {
+    Game game(pactest::makeLevel(bigMap(), __FILE__, __LINE__));
+    game.start();
+
+    // Just short of the extra life: 980 pellets and the power pellet.
+    CHECK_EQ(eatPellets(game, 980), 980);
+    game.player().setPosition(tileCenterOf(kBigPowerX, kBigPowerY));
+    game.step(0.001f);
+    CHECK_EQ(game.score(), 9850);
+    CHECK_EQ(game.lives(), 3);
+    CHECK(game.isFrightened());
+
+    // The frightened ghost gives the points that cross the threshold.
+    const Ghost& ghost = game.ghosts()[0];
+    game.player().setPosition(tileCenterOf(ghost.tileX(), ghost.tileY()));
+    game.step(0.001f);
+
+    CHECK_EQ(game.score(), 10050);
+    CHECK_EQ(game.lives(), 4);
+}
+
+PAC_TEST(Game, aPowerPelletDoesNotFrightenEyes) {
+    Game game(pactest::makeLevel(pactest::gameMap(), __FILE__, __LINE__));
+    game.start();
+
+    Ghost& blinky = game.ghosts()[0];
+    blinky.eat();
+    blinky.setPosition(tileCenterOf(1, 1));
+    CHECK(blinky.isEyes());
+
+    game.player().setPosition(tileCenterOf(10, 5));
+    game.step(0.001f);
+
+    CHECK(game.isFrightened());
+    CHECK(blinky.isEyes());
+}
+
+PAC_TEST(Game, eyesAreNotReleasedByTheSchedule) {
+    Game game(pactest::makeLevel(pactest::gameMap(), __FILE__, __LINE__));
+    game.start();
+
+    // A ghost that is eyes and has not come home yet must not be released by
+    // the schedule: it would come back to life on the way.
+    Ghost& pinky = game.ghosts()[1];
+    pinky.setPosition(tileCenterOf(1, 1));
+    pinky.setReleased(false);
+    pinky.eat();
+
+    game.step(0.1f);
+
+    CHECK(!pinky.isReleased());
+    CHECK(pinky.isEyes());
+}
+

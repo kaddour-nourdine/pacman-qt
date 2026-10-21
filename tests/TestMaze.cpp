@@ -14,6 +14,13 @@ PAC_TEST(Maze, reportsGeometry) {
     CHECK(!maze.allPelletsEaten());
 }
 
+PAC_TEST(Maze, findsTheTileUnderAPosition) {
+    const Maze maze(pactest::makeLevel(pactest::layoutMap(), __FILE__, __LINE__));
+    CHECK_EQ(maze.tileAt(Vec2{1.5f, 1.5f}), Tile::Pellet);
+    CHECK_EQ(maze.tileAt(Vec2{0.5f, 0.5f}), Tile::Wall);
+    CHECK_EQ(maze.tileAt(Vec2{-0.5f, 1.5f}), Tile::Wall);
+}
+
 PAC_TEST(Maze, treatsOutsideAsWall) {
     const Maze maze(pactest::makeLevel(pactest::layoutMap(), __FILE__, __LINE__));
     CHECK_EQ(maze.tileAt(-1, 1), Tile::Wall);
@@ -104,4 +111,59 @@ PAC_TEST(Maze, findsPathAcrossTunnel) {
     CHECK_EQ(maze.stepToward(1, 1, 9, 1, false), Direction::Left);
     CHECK_EQ(maze.stepToward(9, 1, 1, 1, false), Direction::Right);
     CHECK_EQ(maze.stepToward(0, 1, 0, 1, false), Direction::None);
+}
+
+// --- The corners of the map ------------------------------------------------
+//
+// The path search and the pellet lookup have to behave when they are asked
+// for a tile that is not on the map.
+
+PAC_TEST(Maze, treatsTheRightEdgeAsWall) {
+    const Maze maze(pactest::makeLevel(pactest::layoutMap(), __FILE__, __LINE__));
+    CHECK_EQ(maze.tileAt(11, 1), Tile::Wall);
+    CHECK_EQ(maze.tileAt(-1, 1), Tile::Wall);
+}
+
+PAC_TEST(Maze, ignoresPelletsOutsideTheMap) {
+    Maze maze(pactest::makeLevel(pactest::layoutMap(), __FILE__, __LINE__));
+    CHECK_EQ(maze.takePellet(-1, 1), Tile::Empty);
+    CHECK_EQ(maze.takePellet(11, 1), Tile::Empty);
+    CHECK_EQ(maze.takePellet(1, -1), Tile::Empty);
+    CHECK_EQ(maze.takePellet(1, 7), Tile::Empty);
+    CHECK_EQ(maze.pelletsRemaining(), 31);
+    CHECK_EQ(maze.pelletsEaten(), 0);
+}
+
+PAC_TEST(Maze, hasNoPathWithoutAMap) {
+    const Maze maze{pac::Level{}};
+    CHECK(!maze.level().isValid());
+    CHECK_EQ(maze.stepToward(0, 0, 1, 1, false), Direction::None);
+}
+
+PAC_TEST(Maze, wrapsNothingWithoutAMap) {
+    const Maze maze{pac::Level{}};
+    CHECK_EQ(maze.wrapX(3, 0), 3);
+    CHECK_EQ(maze.wrapX(-3, 0), -3);
+    CHECK_EQ(maze.tileXOf(Vec2{1.5f, 1.5f}), 1);
+}
+
+PAC_TEST(Maze, refusesToStepOutsideTheMap) {
+    const Maze maze(pactest::makeLevel(pactest::layoutMap(), __FILE__, __LINE__));
+    CHECK_EQ(maze.stepToward(-5, 1, 3, 1, false), Direction::None);
+    CHECK_EQ(maze.stepToward(1, -1, 3, 1, false), Direction::None);
+    CHECK_EQ(maze.stepToward(1, 7, 3, 1, false), Direction::None);
+    CHECK_EQ(maze.stepToward(1, 1, -5, 1, false), Direction::None);
+    CHECK_EQ(maze.stepToward(1, 1, 3, -1, false), Direction::None);
+    CHECK_EQ(maze.stepToward(1, 1, 3, 7, false), Direction::None);
+
+    // Outside the map in both directions at once.
+    CHECK_EQ(maze.stepToward(-5, -1, 3, 1, false), Direction::None);
+    CHECK_EQ(maze.stepToward(-5, 7, 3, 1, false), Direction::None);
+}
+
+PAC_TEST(Maze, searchesAlongTheEdgesOfTheMap) {
+    const Maze maze(pactest::makeLevel(pactest::edgeMap(), __FILE__, __LINE__));
+    CHECK_EQ(maze.stepToward(1, 1, 3, 1, false), Direction::Right);
+    CHECK_EQ(maze.stepToward(1, 1, 3, 2, false), Direction::Right);
+    CHECK_EQ(maze.stepToward(0, 0, 3, 0, false), Direction::Right);
 }

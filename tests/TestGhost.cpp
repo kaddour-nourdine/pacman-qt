@@ -1,3 +1,5 @@
+#include <string>
+
 #include "Fixtures.hpp"
 #include "TestFramework.hpp"
 #include "pacman/Ghost.hpp"
@@ -202,7 +204,76 @@ PAC_TEST(Ghost, resetsAfterDeath) {
 }
 
 PAC_TEST(Ghost, names) {
-    CHECK_EQ(toString(GhostId::Blinky)[0], 'b');
-    CHECK_EQ(toString(GhostMode::Eyes)[0], 'e');
-    CHECK_EQ(toString(GhostMode::Chase)[0], 'c');
+    CHECK(std::string(toString(GhostId::Blinky)) == "blinky");
+    CHECK(std::string(toString(GhostId::Pinky)) == "pinky");
+    CHECK(std::string(toString(GhostId::Inky)) == "inky");
+    CHECK(std::string(toString(GhostId::Clyde)) == "clyde");
+    CHECK(std::string(toString(GhostMode::Scatter)) == "scatter");
+    CHECK(std::string(toString(GhostMode::Chase)) == "chase");
+    CHECK(std::string(toString(GhostMode::Frightened)) == "frightened");
+    CHECK(std::string(toString(GhostMode::Eyes)) == "eyes");
+    CHECK(std::string(toString(GhostMode::LeavingHouse)) == "leavinghouse");
+}
+
+PAC_TEST(Ghost, eyesTargetTheirSpawn) {
+    Maze maze = house();
+    Random random(3);
+    Ghost ghost(maze, GhostId::Pinky, 3, 4, Direction::Left, &random);
+
+    // The eyes go home.
+    ghost.setMode(GhostMode::Eyes);
+    ghost.updateTarget(tileCenterOf(1, 1), Direction::None, tileCenterOf(1, 1));
+    CHECK(nearlyEquals(ghost.target(), tileCenterOf(3, 4)));
+
+    // A ghost that is leaving the house goes to the tile above it.
+    ghost.setMode(GhostMode::LeavingHouse);
+    ghost.updateTarget(tileCenterOf(1, 1), Direction::None, tileCenterOf(1, 1));
+    CHECK(nearlyEquals(ghost.target(), tileCenterOf(3, 2)));
+}
+
+// --- The corners of the rules ---------------------------------------------
+
+PAC_TEST(Ghost, flashesOnlyWhileTheFrightIsAboutToEnd) {
+    Maze maze = layout();
+    Random random(17);
+    Ghost ghost(maze, GhostId::Blinky, 4, 3, Direction::Left, &random);
+
+    // A ghost that is not frightened never flashes.
+    CHECK(!ghost.isFrightenedFlashing());
+
+    ghost.setMode(GhostMode::Frightened);
+
+    // The last two seconds of the fright: the ghost flashes.
+    ghost.setFrightenedTimeLeft(2.0f);
+    CHECK(ghost.isFrightenedFlashing());
+    ghost.setFrightenedTimeLeft(1.0f);
+    CHECK(ghost.isFrightenedFlashing());
+
+    // More than two seconds left: no flash yet.
+    ghost.setFrightenedTimeLeft(2.5f);
+    CHECK(!ghost.isFrightenedFlashing());
+
+    // No time left: the fright is over.
+    ghost.setFrightenedTimeLeft(0.0f);
+    CHECK(!ghost.isFrightenedFlashing());
+}
+
+PAC_TEST(Ghost, picksTheFirstChoiceWithoutRandomness) {
+    Maze maze = junction();
+    Ghost first(maze, GhostId::Blinky, 2, 2, Direction::Up, nullptr);
+    Ghost second(maze, GhostId::Blinky, 2, 2, Direction::Up, nullptr);
+    first.setSpeed(1.0f);
+    second.setSpeed(1.0f);
+    first.setMode(GhostMode::Frightened);
+    second.setMode(GhostMode::Frightened);
+
+    first.update(1.0f);
+    second.update(1.0f);
+
+    // Without a random source the ghost always takes the first way it can
+    // go, so both ghosts end up in the same place.
+    CHECK_EQ(first.tileX(), 2);
+    CHECK_EQ(first.tileY(), 1);
+    CHECK_EQ(second.tileX(), first.tileX());
+    CHECK_EQ(second.tileY(), first.tileY());
 }

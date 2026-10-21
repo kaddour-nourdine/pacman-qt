@@ -142,6 +142,13 @@ PAC_TEST(Level, rejectsEmptyLevel) {
     CHECK(rejects({"name = Nothing"}));
 }
 
+PAC_TEST(Level, reportsFailuresWithoutAnErrorSlot) {
+    // The caller may not care about the message; the parse still fails.
+    Level level;
+    CHECK(!Level::parse({"#####", "#P.x#", "#####"}, level, nullptr));
+    CHECK(!level.isValid());
+}
+
 PAC_TEST(Level, loadsLevelFile) {
     Level level;
     std::string error;

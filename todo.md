@@ -284,8 +284,20 @@ design decisions, testing, and verification checklist.
 
 - [ ] **CI** (`.github/workflows/ci.yml`): configure, build with `-Werror`, run `ctest`, on
       Linux; later a job that builds the Qt app with `qt-qemu`/offscreen.
-- [ ] **Coverage**: `gcovr` or `llvm-cov` report; aim to cover `Game.cpp` and `Entity.cpp`
+- [x] **Coverage**: `gcovr` or `llvm-cov` report; aim to cover `Game.cpp` and `Entity.cpp`
       branches, then check the report into `docs/` as a baseline.
+      *Done:* `./tools/coverage.sh` configures a build with `--coverage`, runs the suite and asks
+      `gcovr` for the report. Baseline on `core/src`: **lines 98.1 % (1062/1083), branches 92.3 %
+      (853/924), functions 100 % (95/95)** — every function of the model is called by a test, and
+      `Game.cpp`/`Entity.cpp` (the two files the item names) are at 93.4 % / 89.4 % branches with
+      only unreachable gaps left. The 71 branches no test takes are listed one by one in
+      `docs/coverage.md` with the reason each cannot be reached (a maze pointer that cannot be
+      null, the default case of a switch over a complete enum, the exception edge of a
+      constructor, the thread-safety guard of a function-local static, ...). Filling the gaps
+      meant new tests in `TestEntity.cpp`, `TestGame.cpp`, `TestMaze.cpp`, `TestGhost.cpp`,
+      `TestLevel.cpp`, `TestLevelManager.cpp` and `TestEngine.cpp`, plus an `edgeMap()` fixture;
+      the suite grew from 104 to 139 tests. `Reachability` was registered as a CTest test while
+      checking the report, so `ctest` now runs everything.
 - [x] **Fuzz the parser**: generate random header/map inputs and assert `parse` either succeeds
       or returns a non-empty error — never crashes, never throws.
       *Done:* `tools/pacman_fuzz` generates random headers and maps, mutates the levels that ship
