@@ -37,6 +37,19 @@ PAC_TEST(Engine, clampsLongFrames) {
     CHECK_NEAR(engine.interpolationAlpha(), 0.0, 1e-9);
 }
 
+PAC_TEST(Engine, neverRunsLessThanOneStep) {
+    Game game(pactest::makeLevel(pactest::gameMap(), __FILE__, __LINE__));
+    Engine engine(game);
+
+    // A limit below one step is raised to one step: the simulation never
+    // runs slower than the model can keep up with.
+    engine.setMaxFrameSeconds(0.001);
+
+    CHECK_EQ(engine.update(0.001), 0);
+    CHECK_EQ(engine.update(Engine::kStepSeconds), 1);
+    CHECK_EQ(static_cast<long long>(engine.stepCount()), 1);
+}
+
 PAC_TEST(Engine, honoursTimeScale) {
     Game game(pactest::makeLevel(pactest::gameMap(), __FILE__, __LINE__));
     Engine engine(game);

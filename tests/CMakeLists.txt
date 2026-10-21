@@ -2,6 +2,7 @@ add_executable(pacman_tests
     TestMain.cpp
     TestDeterminism.cpp
     TestEngine.cpp
+    TestEntity.cpp
     TestGame.cpp
     TestGhost.cpp
     TestLevel.cpp
@@ -23,7 +24,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(pacman_tests PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-foreach(suite Direction Vec2 Tile Level LevelManager Maze Player Ghost Game Engine ModeSchedule Determinism)
+foreach(suite Direction Vec2 Tile Level LevelManager Maze Player Ghost Entity Game Engine ModeSchedule Determinism)
     add_test(NAME ${suite} COMMAND pacman_tests ${suite})
 endforeach()
 
@@ -41,6 +42,8 @@ add_test(NAME InstallCheck
     COMMAND ${CMAKE_COMMAND}
         -DBUILD_DIR=${CMAKE_BINARY_DIR}
         -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+        "-DCONSUMER_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
+        "-DCONSUMER_LINKER_FLAGS=${CMAKE_EXE_LINKER_FLAGS}"
         -P ${CMAKE_CURRENT_SOURCE_DIR}/install_check.cmake
 )
 set_tests_properties(InstallCheck PROPERTIES TIMEOUT 300)
@@ -53,6 +56,9 @@ target_compile_definitions(pacman_tests_reach PRIVATE
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(pacman_tests_reach PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+# Every pellet of every level must be reachable, or the level is unwinnable.
+add_test(NAME Reachability COMMAND pacman_tests_reach)
 
 option(PACMAN_BUILD_QT_TESTS "Build Qt view tests" OFF)
 if(PACMAN_BUILD_QT_TESTS AND PACMAN_BUILD_APP)

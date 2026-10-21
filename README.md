@@ -20,7 +20,7 @@ The project follows a **model / view split**:
 
 | Part | State |
 | --- | --- |
-| Simulation model (maze, player, ghosts, rules, level list, clock) | Done, 104 tests passing |
+| Simulation model (maze, player, ghosts, rules, level list, clock) | Done, 139 tests passing |
 | Level file format, level list (`LevelManager`) + three playable levels (`levels/level1.txt` is the classic arcade maze, `levels/level2.txt`, `levels/level3.txt`) | Done |
 | Qt Quick / QML view, window, input (`app/`, needs Qt 6) | Done (classic vector arcade rendering, HUD, sound effects, pause menu) |
 | Headless terminal renderer (`tools/pacman_text`) | Done |
@@ -54,6 +54,7 @@ cmake -S . -B build -DPACMAN_BUILD_APP=ON      # also build the Qt Quick app (ne
 cmake -S . -B build -DPACMAN_BUILD_APP=ON -DPACMAN_BUILD_QT_TESTS=ON   # also build the headless Qt test
 ./build/tests/pacman_tests            # run every test, pretty output
 ./build/tests/pacman_tests Ghost      # run one suite
+./tools/coverage.sh                   # coverage report of the model (needs gcovr)
 ```
 
 `pacman_tests` prints one line per test (`ok` / `FAIL`) and returns a non-zero exit code if
@@ -111,11 +112,12 @@ tools/
   pacman_text/              a terminal renderer you can actually play
   ai_demo/                  a small scripted run of the engine
   pacman_fuzz/              a fuzzer for the level parser
+  coverage.sh               builds with coverage counters and reports via gcovr
 levels/
   level1.txt, level2.txt, level3.txt  the playable levels, written in a plain ASCII
                                       format (also embedded as Qt resources so an
                                       installed app or phone can load them)
-tests/                      the test suite (104 tests, no external framework)
+tests/                      the test suite (139 tests, no external framework)
   test_view.cpp             optional headless Qt view test (PACMAN_BUILD_QT_TESTS)
   install_check.cmake       proves that pacman_core installs and is found again
   install_consumer/         a project outside the tree, built against the installed package
@@ -168,6 +170,8 @@ Supporting documents:
 - [`docs/code-tour.md`](docs/code-tour.md) — a file-by-file tour with the responsibility of
   every class and function.
 - [`docs/testing.md`](docs/testing.md) — how the test harness works and how to add a test.
+- [`docs/coverage.md`](docs/coverage.md) — the coverage baseline of the model (`./tools/coverage.sh`)
+  and why every branch no test takes cannot be reached.
 - [`docs/view-implementation.md`](docs/view-implementation.md) — complete documentation of the
   Qt Quick view (Phase 4), including architecture, components, design decisions, and testing.
 

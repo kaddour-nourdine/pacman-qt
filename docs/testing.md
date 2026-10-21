@@ -1,15 +1,14 @@
 # Testing
 
-The project has 104 tests in 12 suites, all green, plus a separate reachability binary, a fuzz
-run for the level parser and an optional Qt view suite:
+The project has 139 tests in 13 suites, all green, plus a separate reachability binary, a fuzz
+run for the level parser, an install check for the exported package and an optional Qt view
+suite:
 
 ```
 $ ctest --test-dir build --output-on-failure            # default build
-100% tests passed, 0 tests failed out of 13
-$ ./build/tests/pacman_tests_reach
-1/1 passed
+100% tests passed, 0 tests failed out of 16             # 13 suites + Reachability + LevelFuzz + InstallCheck
 $ ctest --test-dir build --output-on-failure            # with -DPACMAN_BUILD_QT_TESTS=ON
-100% tests passed, 0 tests failed out of 14             # adds the QtView suite
+100% tests passed, 0 tests failed out of 17             # adds the QtView suite
 ```
 
 There is no external test framework (no GoogleTest, no Catch2) — just `tests/TestFramework.hpp`
@@ -99,7 +98,7 @@ a parse error as a test failure:
 Maze maze(pactest::makeLevel(pactest::houseMap(), __FILE__, __LINE__));
 ```
 
-The eight maps exist because testing on a 21×21 maze makes assertions mushy. Each one isolates
+The nine maps exist because testing on a 21×21 maze makes assertions mushy. Each one isolates
 one situation:
 
 | Fixture | Shape | Exists to test |
@@ -108,6 +107,7 @@ one situation:
 | `ringMap()` | 11×3 corridor with tunnels on both ends | tunnel wrapping (x becomes `−1` and comes back as `10`) |
 | `houseMap()` | 11×8 with a sealed box `1234` behind a `-----` door | doors: the player is blocked, ghosts are not; BFS through the door |
 | `junctionMap()` | 5×5 open room, player in a corner | ghost tie-breaking (only Up is legal there) |
+| `edgeMap()` | 4×3 whose top row, bottom row and right column are walkable | the path search running into the edges of the map |
 | `gameMap()` | 13×7, house in the middle, one power pellet | full `Game` flows; 34 pellets, all reachable |
 | `modeMap()` | `gameMap` plus a header: speeds `0.001`, `modeSchedule = 1,2`, `frightenedSeconds = 1.0` | mode schedule and fright timers without waiting real seconds |
 | `firstRoomMap()` | 7×6, named `First Room`, 15 pellets, ghost markers in the open | the first entry of a two-level campaign |
@@ -125,17 +125,18 @@ can run a whole scatter phase (`game.step(0.5f)`) in microseconds and assert on 
 | `Direction` | 4 | opposites, axis deltas, diagonal-to-`None` conversion |
 | `Vec2` | 2 | arithmetic; `tileCenterOf` / `tileIndexOf` round trip |
 | `Tile` | 2 | classification predicates; character ⇄ tile round trip |
-| `Level` | 17 | geometry and markers, header options, defaults, **every error path** (ragged rows, no `P`, two `P`s, duplicate ghost marker, unknown option, bad number, invalid character, blank line in map, empty file, missing file), locale-independent number parsing, plus loading the real `level1.txt` and every file in `levels/` |
-| `LevelManager` | 11 | empty list, 1-based picking with wrapping, `nameFor` labels, invalid level rejected, `clear`, loading `level1.txt`, and `loadDirectory`: sorted order, appending, all-or-nothing on a broken file, missing/empty directory |
-| `Maze` | 10 | out-of-bounds as wall, pellets consumed once, level completion, `resetPellets`, doors per actor, tunnel wrapping, pellet-free tunnels, shortest path, path across a tunnel |
+| `Level` | 18 | geometry and markers, header options, defaults, **every error path** (ragged rows, no `P`, two `P`s, duplicate ghost marker, unknown option, bad number, invalid character, blank line in map, empty file, missing file, failing without an error slot), locale-independent number parsing, plus loading the real `level1.txt` and every file in `levels/` |
+| `LevelManager` | 14 | empty list, 1-based picking with wrapping, `nameFor` labels, invalid level rejected, `clear`, loading `level1.txt`, and `loadDirectory`: sorted order, appending, all-or-nothing on a broken file, missing/empty directory, a folder called `*.txt` being skipped, failing without an error slot |
+| `Maze` | 17 | geometry and the tile under a position, out-of-bounds as wall (both edges), pellets consumed once and pellets outside the map ignored, level completion, `resetPellets`, doors per actor, tunnel wrapping, pellet-free tunnels, shortest path, path across a tunnel, and the path search at the edges of the map: outside coordinates, an empty map, a map whose borders are walkable |
 | `Player` | 12 | spawn, partial and whole tiles, exact one tile per second, turn applied at the next centre, ignoring a turn into a wall, stopping at a wall, restarting after a block, tunnel wrap, door blocked, counters, animation phase, reset |
-| `Ghost` | 14 | spawn positions, point values, scatter corners, all four chase targets, tie-break preference, moving towards a target, reversal on fright, deterministic frightened choice, eyes pathing through the door, reset, `toString` |
-| `Game` | 18 | ready-and-frozen, pellet collection and events, power pellet frightens ghosts, fright ending and schedule resumption, eating a ghost, eyes respawn, collision kills, game over after three lives, level completion and level 2, full reset, walking the `LevelManager` list (advance, wrap, lives carrying over, `reset` back to level 1, empty list ⇒ game over), seed reproducibility, the real level end to end, state names, soak test invariants, ghosts stay on walkable tiles after mid-tile reversal |
-| `Engine` | 8 | fixed step size, partial-step accumulation, long-frame clamping, time scale, ignoring non-positive frames, no simulation while `Ready`, real-time driving, reproducibility with jittered frame times |
-| `ModeSchedule` | 2 | default alternation, custom durations |
+| `Ghost` | 17 | spawn positions, point values, scatter corners, all four chase targets, eyes and leaving-house targets, tie-break preference, moving towards a target, reversal on fright, deterministic frightened choice, eyes pathing through the door, reset, `toString` of every id and mode, flashing while frightened, choosing without a random source |
+| `Entity` | 9 | the movement primitives on their own: non-positive delta, zero speed, the guard against an absurd speed, a blocked entity, everything that is skipped without a direction (move, reverse, distance to the next centre, snapping) |
+| `Game` | 26 | ready-and-frozen, pellet collection and events, power pellet frightens ghosts (but not eyes), fright ending and schedule resumption, eating a ghost, eyes respawn, eyes not released by the schedule, collision kills, game over after three lives, level completion and its pause before level 2, full reset, walking the `LevelManager` list (advance, wrap, lives carrying over, `reset` back to level 1, empty list ⇒ game over), seed reproducibility, the real level end to end, every state name, a non-positive delta, the extra life from 100 pellets and from a ghost, a ghost moving slower in a tunnel, soak test invariants, ghosts stay on walkable tiles after mid-tile reversal |
+| `Engine` | 9 | fixed step size, partial-step accumulation, long-frame clamping, a frame budget below one step being raised to one step, time scale, ignoring non-positive frames, no simulation while `Ready`, real-time driving, reproducibility with jittered frame times |
+| `ModeSchedule` | 5 | default alternation, custom durations, negative time, a phase outside the schedule, the last mode kept after the end |
 | `Determinism` | 4 | two identical replays agree, the digest matches the golden value, a different seed leads to a different game, the replay really exercises the game |
 
-(`ModeSchedule`'s two tests physically live in `TestGame.cpp`; the suite name is what matters to
+(`ModeSchedule`'s five tests physically live in `TestGame.cpp`; the suite name is what matters to
 CTest.)
 
 ### The determinism replay
@@ -162,6 +163,25 @@ Two things are worth knowing about it:
 
 A test that cannot fail is decoration — try it once: change the seed in `Ghost::chooseDirection`
 and watch the `Determinism` suite go red.
+
+---
+
+## Coverage
+
+`docs/coverage.md` is the coverage baseline of the model, produced by `./tools/coverage.sh`:
+
+| `core/src` | lines | branches | functions |
+| --- | --- | --- | --- |
+| | 98.1 % (1062/1083) | 92.3 % (853/924) | 100 % (95/95) |
+
+Every function of the model is called by a test. Every branch that no test takes is listed in
+that page together with the reason why it *cannot* be taken — a maze pointer that cannot be null,
+the default case of a switch over a complete enum, the exception edge of a constructor. That list
+is the point of the exercise: without it "92 % of branches" looks like 71 missing tests, while it
+is really 0 missing tests and 71 impossible paths.
+
+The rule: a new branch in `core/` comes with a test that takes it, and a branch that is
+genuinely unreachable goes into the list in `docs/coverage.md`.
 
 ---
 
@@ -224,7 +244,7 @@ fail is decoration.
     runs with `QT_FORCE_STDERR_LOGGING=1` to see QML warnings.
 - **Reachability**: `tests/TestReachability.cpp` BFS-checks that every pellet (and fruit, if
   present) is reachable, for every level. It builds a separate `pacman_tests_reach` binary and is
-  **not yet registered** as a CTest test (add it to `tests/CMakeLists.txt`).
+  registered as the `Reachability` CTest test.
 - **Property-based / fuzz testing**: the parser *is* fuzzed now — `tools/pacman_fuzz` generates
   random headers and maps, mutates the levels that ship with the game and checks that `parse`
   either produces a level that agrees with the input or fails with a message that says why. It

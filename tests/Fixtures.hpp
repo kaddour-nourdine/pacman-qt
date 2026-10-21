@@ -66,6 +66,16 @@ inline std::vector<std::string> junctionMap() {
     };
 }
 
+// A map whose top row, bottom row and right column are walkable, so that
+// the path search runs into the edges of the map.
+inline std::vector<std::string> edgeMap() {
+    return {
+        "....",
+        "#P..",
+        "....",
+    };
+}
+
 inline std::vector<std::string> gameMap() {
     return {
         "#############",
