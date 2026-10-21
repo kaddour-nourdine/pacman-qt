@@ -2,6 +2,7 @@ package org.pacman.qt;
 
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
@@ -17,22 +18,30 @@ import org.qtproject.qt.android.bindings.QtActivity;
  *  - the window is immersive, so the system bars do not eat the board,
  *  - the back button is forwarded to the game instead of closing the app.
  *
- * The back button needs care: Android delivers it to the activity, and Qt's
- * own input delegate swallows it (it registers an OnBackInvokedCallback on
- * API 33+ and consumes the key event on older versions). So the press is
- * intercepted here and handed to the C++ side through JNI; the game turns it
- * into the pause menu.
+ * The back button needs care, because Android can deliver one press twice.
+ * From API 33 on, an app that opts into the predictive back gesture gets
+ * the press as an OnBackInvokedCallback — and the same press still arrives
+ * as a plain key event. Forwarding both would open the pause menu and close
+ * it again in the same breath, so the game would look like nothing had
+ * happened (verified on a Tecno A059, Android 16).
+ *
+ * So exactly one path forwards the press: the callback when it could be
+ * registered (API 33+, and then the gesture is covered as well), the key
+ * event otherwise. The key event is swallowed either way, because the game
+ * handles the back button and the activity must not finish.
  */
 public class MainActivity extends QtActivity
 {
+    private static final String TAG = "pacman";
+
+    // True when the predictive-back callback is in place. Then the key event
+    // must not forward the press a second time.
+    private boolean mBackCallbackRegistered = false;
+
     @Override
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-
-        // Landscape, both ways round: the player can turn the phone the way
-        // that suits them.
-        setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
 
         // A phone lying on the table should not dim the screen mid-game.
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -43,11 +52,8 @@ public class MainActivity extends QtActivity
     @Override
     protected void onResume()
     {
-        // Qt registers its own back gesture callback in onResume(), so ours
-        // has to be registered afterwards to win (the dispatcher keeps one
-        // callback per priority).
         super.onResume();
-        BackHandler.register(this);
+        mBackCallbackRegistered = BackHandler.register(this);
         applyImmersiveMode();
     }
 
@@ -63,8 +69,8 @@ public class MainActivity extends QtActivity
     /**
      * The back button never leaves the game: it opens the pause menu.
      *
-     * On API 33+ the gesture arrives through the OnBackInvokedCallback
-     * (see BackHandler); the key event below covers the hardware button and
+     * On API 33+ the press arrives through the OnBackInvokedCallback (see
+     * BackHandler) and is forwarded from there; the key event below covers
      * the older platforms, where the framework would otherwise close the
      * activity.
      */
@@ -72,9 +78,10 @@ public class MainActivity extends QtActivity
     public boolean dispatchKeyEvent(KeyEvent event)
     {
         if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
-            if (event.getAction() == KeyEvent.ACTION_DOWN) {
-                nativeBackPressed();
+            if (!mBackCallbackRegistered && event.getAction() == KeyEvent.ACTION_DOWN) {
+                forwardBackPress();
             }
+            // Swallowed in every case: the game handles the back button.
             return true;
         }
         return super.dispatchKeyEvent(event);
@@ -96,6 +103,15 @@ public class MainActivity extends QtActivity
     }
 
     /**
+     * Hands the press to the game (see app/AndroidBridge.cpp).
+     */
+    private void forwardBackPress()
+    {
+        Log.i(TAG, "back press -> the game");
+        nativeBackPressed();
+    }
+
+    /**
      * Called from C++ (see app/AndroidBridge.cpp).
      */
     private native void nativeBackPressed();
@@ -103,13 +119,15 @@ public class MainActivity extends QtActivity
     /**
      * The predictive back gesture (API 33+). Kept in its own class so that
      * the API 33 types are only loaded on devices that have them.
+     *
+     * Returns true when the callback is in place.
      */
     private static final class BackHandler
     {
-        static void register(final MainActivity activity)
+        static boolean register(final MainActivity activity)
         {
             if (Build.VERSION.SDK_INT < 33) {
-                return;
+                return false;
             }
             try {
                 activity.getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
@@ -118,13 +136,15 @@ public class MainActivity extends QtActivity
                         @Override
                         public void onBackInvoked()
                         {
-                            activity.nativeBackPressed();
+                            activity.forwardBackPress();
                         }
                     });
+                return true;
             } catch (IllegalStateException e) {
                 // The dispatcher is only available while the activity is
                 // running; the key event path covers the rest.
-                android.util.Log.w("pacman", "cannot register back callback: " + e.getMessage());
+                Log.w(TAG, "cannot register back callback: " + e.getMessage());
+                return false;
             }
         }
     }

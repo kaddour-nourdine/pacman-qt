@@ -1,5 +1,6 @@
 #include "AndroidBridge.hpp"
 
+#include <QDebug>
 #include <QMetaObject>
 
 #if defined(Q_OS_ANDROID)
@@ -32,8 +33,10 @@ void AndroidBridge::handleBackPressed() {
 // thread that owns it.
 extern "C" JNIEXPORT void JNICALL
 Java_org_pacman_qt_MainActivity_nativeBackPressed(JNIEnv*, jobject) {
+    qInfo() << "pacman: back pressed (JNI entry point)";
     AndroidBridge* bridge = AndroidBridge::instance();
     if (bridge == nullptr) {
+        qWarning() << "pacman: back pressed but there is no bridge";
         return;
     }
     QMetaObject::invokeMethod(bridge, "handleBackPressed", Qt::QueuedConnection);
