@@ -6,3 +6,5 @@ cmake_install.cmake
 *.user
 .cache/
 *.apk
+.*.swp
+.*.kate-swp
