@@ -449,7 +449,7 @@ smooth at any refresh rate.
 
 ## The tools (`tools/`)
 
-Neither tool contains gameplay logic: they drive `Engine` and only read `Game`, which is
+None of the tools contains gameplay logic: they drive `Engine` and only read `Game`, which is
 exactly what the Qt view does. They exist so the model can be watched and fuzzed without Qt.
 
 ### `tools/pacman_text/main.cpp` (236 lines)
@@ -468,6 +468,26 @@ tool finds the levels without being told where the source tree is.
 A scripted sanity run: load `levels/level1.txt`, start the game, step `Engine` at 5× real
 time for 10 000 frames with no input, and print `OK` (or `OVER`). It is a smoke test a human
 can read, and it complements `TestGame.playsRealLevelEndToEnd` by running much longer.
+
+### `tools/pacman_fuzz/main.cpp`
+
+A fuzzer for the level parser. `Level::parse` is a pure function, so it is the easiest part
+of the project to throw garbage at — and the part where a crash would hurt most, because it
+is the first thing that touches a file from outside. The tool generates random headers and
+maps, mutates the levels that ship with the game (a mutated valid map reaches the error paths
+that random noise rarely does), and checks the promise the parser makes for every input:
+
+```
+parse either succeeds and produces a level that agrees with the input,
+or it fails with a message that says why. It never crashes, it never
+throws, and a failed parse leaves the output level alone.
+```
+
+"Agrees with the input" is checked against the input itself: the player marker is where the
+level says, the ghost markers are where the level says, the pellet count matches the grid,
+every speed and every mode phase is positive. The seed is fixed, so a run is reproducible;
+`--iterations`, `--seed`, `--corpus DIR` and `--stdin` (cases separated by a line with only
+`%%`) change what it does. It is registered as the `LevelFuzz` CTest test.
 
 ---
 
