@@ -157,7 +157,9 @@ emulator -avd pacman-avd -no-snapshot-load &
 
 ```bash
 # Qt's template activity — the installed package is org.qtproject.example.pacman_app
-# (NOT org.pacman.qt: android/ is reference material, Qt's template drives the build)
+# (NOT org.pacman.qt: only android/package/ is wired into the build, via
+# QT_ANDROID_PACKAGE_SOURCE_DIR — it carries the launcher icon; Qt's template
+# still drives the manifest and the activity)
 adb shell am start -n org.qtproject.example.pacman_app/org.qtproject.qt.android.bindings.QtActivity
 
 # equivalent one-liner:
@@ -223,6 +225,11 @@ Device quirks (learned 2026-10-20 on a Tecno A059 / Android 16 / fr-BE):
   (`voicesStarted` / `framesWritten` / `peak`).
 - `app/Main.qml`: touch controls (`MouseArea` over the board: swipe/drag with a
   dead zone, tap = Space) plus a frame-gap diagnostic log.
+- `app/CMakeLists.txt` (Android block): `QT_ANDROID_APP_ICON="@mipmap/ic_launcher"`,
+  `QT_ANDROID_APP_NAME="Pac-Man"` and `QT_ANDROID_PACKAGE_SOURCE_DIR` pointing at
+  `android/package/` — that directory holds the launcher icon (adaptive vector for
+  API 26+, legacy PNGs for older versions); the artwork lives in `android/icon/`
+  with `generate-icons.sh` to regenerate the bitmaps.
 - `app/GameController.cpp` / `app/main.cpp`: perf probes that log only on
   anomalies (`pacman-perf: tick gap … / render-thread gap …`, plus a ≥4 ms
   tripwire when a sound trigger blocks).

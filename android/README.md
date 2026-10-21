@@ -2,6 +2,14 @@
 
 This directory contains Android-specific configuration for building pacman-qt on Android.
 
+## What is actually wired into the build
+
+| Path | Used? | What it does |
+| --- | --- | --- |
+| `package/` | **yes** | `QT_ANDROID_PACKAGE_SOURCE_DIR` of the `pacman_app` target. Contributes `res/` — the launcher icon (adaptive for API 26+, legacy PNGs for older versions). |
+| `icon/` | source only | The artwork the launcher bitmaps are generated from, plus `generate-icons.sh`. |
+| `AndroidManifest.xml`, `CMakeLists.txt`, `src/` | no | Reference material from an early Qt 5 attempt. Qt's own template generates the real manifest and activity. |
+
 ## Prerequisites
 
 1. **Android SDK** - Installed via `sdkmanager`
@@ -48,6 +56,13 @@ invocation (it uses the NDK's own toolchain file plus
 4. Build and deploy to device/emulator
 
 ## Android-Specific Features
+
+### Launcher Icon
+- Adaptive icon (API 26+): `package/res/drawable/ic_launcher_foreground.xml` (a vector
+  Pac-Man) on arcade black
+- Legacy bitmaps for older versions, generated from `icon/pacman.svg`:
+  `bash icon/generate-icons.sh` (needs inkscape or rsvg-convert)
+- The launcher label is set with `QT_ANDROID_APP_NAME` ("Pac-Man")
 
 ### Touch Input
 - Swipe left/right/up/down to change direction

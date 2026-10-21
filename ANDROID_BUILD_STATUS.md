@@ -232,6 +232,8 @@ app/SfxPlayer.{hpp,cpp}             # persistent-stream mixer: bytesAvailable() 
                                     # gain, clamp, health counters (§8)
 tests/test_view.cpp                 # + ViewTest.testMixerFeedsTheAudioSink (regression guard)
 android/                            # manifest/activity reference material (Qt templates drive the real build)
+android/icon/                      # launcher-icon artwork + generate-icons.sh (inkscape)
+android/package/                   # QT_ANDROID_PACKAGE_SOURCE_DIR: the launcher icon res/
 ~/Qt/6.12.0/android_arm64_v8a/      # Qt kit (4 cmake dirs restored from armv7 + bitness fix)
 ```
 

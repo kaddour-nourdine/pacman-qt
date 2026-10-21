@@ -188,8 +188,10 @@ Then work through the remaining `todo.md` Phase 5 items: lifecycle suspend/resum
 orientation/safe areas, back button / immersive mode, settings persistence.
 
 Device quirks learned: the installed package is `org.qtproject.example.pacman_app`
-(Qt's template — the `android/` directory is reference material only, not wired into
-the build); our `qInfo` lands under logcat tag `default` (Qt's own lines use `Qt`);
+(Qt's template — only `android/package/` is wired into the build, as the
+`QT_ANDROID_PACKAGE_SOURCE_DIR` that carries the launcher icon; the old
+`android/AndroidManifest.xml` is reference material); our `qInfo` lands under
+logcat tag `default` (Qt's own lines use `Qt`);
 launching while the screen dozes and `main()` stalls until the screen wakes; on the
 desktop Qt logs go to syslog unless `QT_FORCE_STDERR_LOGGING=1` is set.
 
