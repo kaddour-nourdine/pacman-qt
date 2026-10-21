@@ -433,6 +433,12 @@ Window {
             function onPowerPelletEaten(x, y) {
                 sfx.playPower()
             }
+            function onGhostEaten(points, x, y) {
+                sfx.playGhostEaten()
+            }
+            function onPlayerDied() {
+                sfx.playDeath()
+            }
         }
 
         // Frame pacing: log any stall longer than 45 ms while the game is
