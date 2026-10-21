@@ -806,7 +806,7 @@ Phase 4 is considered complete when:
 These are documented limitations of the Phase 4 implementation:
 
 1. **Audio**: Four sound effects implemented (munch, power, ghost eaten, death). Further arcade sounds (start jingle, fruit, etc.) are TODO.
-2. **Display Verification**: The Qt app has only been verified headless (`offscreen`). Real display testing is needed.
+2. **Display Verification**: Verified on a real desktop display (Wayland/X11) as well as headless (`offscreen`); the window opens at 640×760 and renders without errors.
 3. **Locale**: Level parsing uses `std::from_chars` to avoid locale issues with decimal separators (fixed in Phase 4).
 4. **Sprite Sheet**: The planned packed sprite sheet was cancelled in favor of vector rendering.
 5. **Touch Input**: Implemented in Phase 5 (swipe to turn, tap to start) and verified on a phone.
