@@ -286,8 +286,14 @@ design decisions, testing, and verification checklist.
       Linux; later a job that builds the Qt app with `qt-qemu`/offscreen.
 - [ ] **Coverage**: `gcovr` or `llvm-cov` report; aim to cover `Game.cpp` and `Entity.cpp`
       branches, then check the report into `docs/` as a baseline.
-- [ ] **Fuzz the parser**: generate random header/map inputs and assert `parse` either succeeds
+- [x] **Fuzz the parser**: generate random header/map inputs and assert `parse` either succeeds
       or returns a non-empty error — never crashes, never throws.
+      *Done:* `tools/pacman_fuzz` generates random headers and maps, mutates the levels that ship
+      with the game, and checks that `parse` either succeeds with a level that agrees with the
+      input (player and ghost markers where the level says, pellet count matching the grid, every
+      speed positive) or fails with a message that says why — and that a failed parse leaves the
+      output level alone. It never crashed: 4 million random cases and 400 000 under
+      AddressSanitizer/UBSan are clean. Registered as the `LevelFuzz` CTest test.
 - [x] **Determinism regression**: a test that replays a recorded input log and compares a state
       hash (score, lives, positions, modes) against a golden value; re-generate the golden
       value only when a deliberate rule change happens.

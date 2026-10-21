@@ -26,6 +26,14 @@ endif()
 foreach(suite Direction Vec2 Tile Level LevelManager Maze Player Ghost Game Engine ModeSchedule Determinism)
     add_test(NAME ${suite} COMMAND pacman_tests ${suite})
 endforeach()
+
+# The level parser is fuzzed: random headers and maps, plus mutations of the
+# levels that ship with the game. The tool lives in tools/pacman_fuzz and is
+# only there when the tools are built.
+if(TARGET pacman_fuzz)
+    add_test(NAME LevelFuzz COMMAND pacman_fuzz --iterations 20000 --seed 20240521)
+    set_tests_properties(LevelFuzz PROPERTIES TIMEOUT 300)
+endif()
 add_executable(pacman_tests_reach TestReachability.cpp TestMain.cpp)
 target_link_libraries(pacman_tests_reach PRIVATE pacman_core)
 target_include_directories(pacman_tests_reach PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

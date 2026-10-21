@@ -1,15 +1,15 @@
 # Testing
 
-The project has 100 tests in 11 suites, all green, plus a separate reachability binary and an
-optional Qt view suite:
+The project has 104 tests in 12 suites, all green, plus a separate reachability binary, a fuzz
+run for the level parser and an optional Qt view suite:
 
 ```
 $ ctest --test-dir build --output-on-failure            # default build
-100% tests passed, 0 tests failed out of 11
+100% tests passed, 0 tests failed out of 13
 $ ./build/tests/pacman_tests_reach
 1/1 passed
 $ ctest --test-dir build --output-on-failure            # with -DPACMAN_BUILD_QT_TESTS=ON
-100% tests passed, 0 tests failed out of 12             # adds the QtView suite
+100% tests passed, 0 tests failed out of 14             # adds the QtView suite
 ```
 
 There is no external test framework (no GoogleTest, no Catch2) — just `tests/TestFramework.hpp`
@@ -225,5 +225,8 @@ fail is decoration.
 - **Reachability**: `tests/TestReachability.cpp` BFS-checks that every pellet (and fruit, if
   present) is reachable, for every level. It builds a separate `pacman_tests_reach` binary and is
   **not yet registered** as a CTest test (add it to `tests/CMakeLists.txt`).
-- **Property-based / fuzz testing**: the parser's rejection paths are tested by hand-written
-  cases; generating random maps would find more.
+- **Property-based / fuzz testing**: the parser *is* fuzzed now — `tools/pacman_fuzz` generates
+  random headers and maps, mutates the levels that ship with the game and checks that `parse`
+  either produces a level that agrees with the input or fails with a message that says why. It
+  runs as the `LevelFuzz` CTest test (20 000 cases, fixed seed). The model itself is not fuzzed
+  yet: the gameplay rules are hand-tested, not generated.
