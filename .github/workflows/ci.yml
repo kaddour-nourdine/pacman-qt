@@ -65,3 +65,41 @@ jobs:
         run: |
           export QT_QPA_PLATFORM=offscreen
           ctest --test-dir build --output-on-failure
+
+      - name: Smoke-test the app
+        run: |
+          export QT_QPA_PLATFORM=offscreen
+          export QT_FORCE_STDERR_LOGGING=1
+          timeout 5 ./build/app/pacman_app || test $? -eq 124
+
+  asan:
+    name: Sanitizers (ASan + UBSan, core)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake clang
+
+      - name: Configure
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -g -O1" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined" \
+            -DPACMAN_BUILD_TESTS=ON \
+            -DPACMAN_BUILD_TOOLS=ON \
+            -DPACMAN_BUILD_APP=OFF
+
+      - name: Build
+        run: cmake --build build --parallel "$(nproc)"
+
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure -E InstallCheck
