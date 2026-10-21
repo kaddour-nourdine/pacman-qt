@@ -168,7 +168,8 @@ high-score persistence are in place. Phase 4 documentation is now complete in `d
   1.016 → the mix is now clamped to [-1, 1] (peak reads exactly 1).
 - Regression guard: `ViewTest.testMixerFeedsTheAudioSink` (skips without an audio device).
 - Result on the phone: audio flows, **0** `tick gap`, **0** `sfx trigger blocked`, one
-  benign 41 ms render-thread gap at startup; the user confirmed the game plays without lag.
+  benign 41 ms render-thread gap at startup; the user confirmed the munches are clearly
+  audible and that the game plays without lag.
 
 **First actions next session**:
 ```sh
