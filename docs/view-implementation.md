@@ -16,7 +16,8 @@ The view layer (`app/`) is a **Qt 6 Quick / QML** application that:
 2. Drives the simulation with a 60fps timer
 3. Renders the maze and actors using vector graphics on a `Canvas`
 4. Handles keyboard input (arrows, WASD, Space, P, Esc, R)
-5. Plays sound effects in response to game events
+5. Plays sound effects in response to game events (C++ `SfxPlayer`: one persistent
+   `QAudioSink` fed by a software mixer, so triggering a sound never blocks the UI thread)
 6. Persists high scores using `QSettings`
 7. Exposes the model to QML through a single bridge class (`GameController`)
 
@@ -41,7 +42,7 @@ The view is **completely separate** from the model (`core/`). It reads state, se
 │  │    │    └─────────────┘    │    └─────────────────┘   │    │  ││
 │  │    │                        │                         │    │  ││
 │  │    │    ┌─────────────────────────────────────────────┐  │    │  ││
-│  │    │    │  SoundEffect (munch.wav, power.wav)            │  │    │  ││
+│  │    │    │  sfx.playMunch()/playPower() → SfxPlayer (C++) │  │    │  ││
 │  │    │    │  Keys.onPressed handler                         │  │    │  ││
 │  │    │    └─────────────────────────────────────────────┘  │    │  ││
 │  │    └─────────────────────────────────────────────────────┘  ││
@@ -121,7 +122,7 @@ cmake --build build -j
 The view requires **Qt 6** with these components:
 - `Qt6::Quick` — QML and Canvas rendering
 - `Qt6::QuickControls2` — Window management
-- `Qt6::Multimedia` — SoundEffect for audio
+- `Qt6::Multimedia` — persistent `QAudioSink` + software mixer (`SfxPlayer`/`SfxMixer`)
 - `Qt6::Test` — For the headless view test (optional)
 
 On Fedora:
@@ -305,7 +306,7 @@ Window
         ├── Canvas (board) — Game rendering
         ├── Text overlays — READY!, LEVEL CLEAR, GAME OVER, PAUSED, NO LEVELS FOUND
         ├── Text (popup) — Score popups with fade animation
-        ├── SoundEffect ×2 — munch.wav, power.wav
+        ├── Connections — forwards pellet events to the C++ `sfx` player
         └── Keys.onPressed — Input handler
 ```
 
@@ -370,9 +371,47 @@ Centered text overlays appear based on `game.stateName`:
 
 #### Sound Effects
 
-Two `SoundEffect` instances:
-- `munchSound`: Plays `qrc:/assets/audio/munch.wav` on `pelletEaten` (volume 0.6)
-- `powerSound`: Plays `qrc:/assets/audio/power.wav` on `powerPelletEaten` (volume 0.6)
+Audio is played by the C++ player, not by QML `SoundEffect` objects. `Main.qml` only
+forwards the events:
+
+```qml
+Connections {
+    target: game
+    function onPelletEaten(x, y) {
+        sfx.playMunch()      // cheap: playback happens in SfxPlayer's thread
+    }
+    function onPowerPelletEaten(x, y) {
+        sfx.playPower()
+    }
+}
+```
+
+`app/SfxPlayer.{hpp,cpp}` owns the audio path:
+
+| Piece | Role |
+| --- | --- |
+| `SfxPlayer` | QML-facing object (`sfx` context property): opens the sink, decodes the WAVs, exposes `playMunch()` / `playPower()` and the health counters |
+| `SfxMixer` | a `QIODevice` that mixes up to 4 voices (linear resampling) into the sink's format (Int16/Int32/Float/UInt8) |
+| `QAudioSink` | opened **once** at startup and fed until the app exits — nothing is started or stopped during gameplay |
+
+Why not `SoundEffect`: on Android every `QSoundEffect::play()` restarted an
+`AudioTrack`, which stalled the whole frame pipeline (~50 tick gaps per game,
+`ANDROID_BUILD_STATUS.md` §7).
+
+Two details that are easy to get wrong (both cost a debugging round on the phone):
+
+- **`bytesAvailable()` must be overridden.** Qt's audio pipeline only pulls from a user
+  `QIODevice` when it reports data (`pullFromQIODeviceToRingbuffer()` bails out on
+  `bytesAvailable() == 0`); a plain `QIODevice` reports 0 forever, so the sink idled and
+  the game was silent (`ANDROID_BUILD_STATUS.md` §8). The mixer is a generator: it always
+  claims a 200 ms chunk.
+- **Health counters.** `voicesStarted()` (sounds queued), `framesWritten()` (frames that
+  actually left the mixer) and `peakLevel()` (loudest sample) are logged at startup,
+  every 10 s while playing and on sink-state changes — a silent mixer is not an error,
+  so it has to be measured. `ViewTest.testMixerFeedsTheAudioSink` guards the regression.
+
+Mixing applies the old `SoundEffect` volume (`kSfxGain = 0.6`) and clamps the sum to
+[-1, 1] — two overlapping munches would otherwise exceed full scale.
 
 #### Input Handling
 
@@ -498,6 +537,14 @@ Located in `tests/test_view.cpp`, built only when `PACMAN_BUILD_QT_TESTS=ON`.
 
 **Environment**: Runs with `QT_QPA_PLATFORM=offscreen` (no display required)
 
+**Test**: `ViewTest::testBundledLevelsAreShipped()` — the bundled `levels/*.txt` resources are
+copied into `QStandardPaths::AppDataLocation` when the build-host path is missing.
+
+**Test**: `ViewTest::testMixerFeedsTheAudioSink()` — regression guard for the silent mixer
+(Qt only pulls from a `QIODevice` that reports `bytesAvailable() > 0`): triggers a munch,
+waits 500 ms and asserts that frames left the mixer and the peak level is > 0. Skipped
+when the machine has no audio output device.
+
 **CMake Integration**:
 ```cmake
 add_test(NAME QtView COMMAND pacman_qttest)
@@ -559,14 +606,16 @@ QT_QPA_PLATFORM=offscreen ./build/app/pacman_app
 
 | File | Purpose | Lines |
 | --- | --- | --- |
-| `app/CMakeLists.txt` | Build configuration for view library and app | 60 |
-| `app/main.cpp` | Qt application entry point | 39 |
-| `app/GameController.hpp` | Bridge class declaration (QObject) | 118 |
-| `app/GameController.cpp` | Bridge class implementation | 312 |
-| `app/Main.qml` | Complete QML user interface | 361 |
-| `tests/test_view.cpp` | Headless Qt view test | 36 |
+| `app/CMakeLists.txt` | Build configuration for view library and app | 84 |
+| `app/main.cpp` | Qt application entry point | 62 |
+| `app/GameController.hpp` | Bridge class declaration (QObject) | 124 |
+| `app/GameController.cpp` | Bridge class implementation | 412 |
+| `app/SfxPlayer.hpp` | Audio player + software mixer declaration | 118 |
+| `app/SfxPlayer.cpp` | Audio player + software mixer implementation | 348 |
+| `app/Main.qml` | Complete QML user interface | 429 |
+| `tests/test_view.cpp` | Headless Qt view test | 87 |
 
-**Total**: ~926 lines of view-specific code
+**Total**: ~1664 lines of view-specific code
 
 ---
 

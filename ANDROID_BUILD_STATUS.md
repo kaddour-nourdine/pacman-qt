@@ -1,7 +1,7 @@
 # Android Build Status - Phase 5
 
-**Date:** 2026-10-20
-**Status:** ✅ **Full app builds, APK produced, signed, installed and launched on a phone**
+**Date:** 2026-10-20 (audio verified 2026-10-21)
+**Status:** ✅ **Full app builds, APK produced, signed, installed and launched on a phone — audio verified on the device**
 
 ---
 
@@ -119,9 +119,67 @@ a sound from the game thread is a mutex + a few writes with a ≥4 ms tripwire l
 nothing starts or stops during gameplay. No audio device = warning, not a failure
 (headless tests keep passing).
 
-**Pending:** one confirmation round on hardware (audible munches, tick gaps at the
-~5/game baseline, no `sfx trigger blocked`); the last round's logcat was lost to a
-USB disconnect.
+**Verified on device** (2026-10-21) — but only after §8 below: the mixer was
+silent until `bytesAvailable()` was overridden.
+
+---
+
+### 8. The persistent mixer was silent: Qt only pulls from a device that claims data
+
+The mixer of §7 was correct but **produced no sound at all**. On the phone:
+`QAudioSink` sat in `IdleState`, `framesWritten` stayed at 0, and nothing was
+ever heard — while the desktop showed nothing wrong either (no error, no
+warning).
+
+**Root cause** (Qt 6.12 source,
+`qtmultimedia/src/multimedia/audio/qaudio_qiodevice_support_p.h`):
+
+```cpp
+// pullFromQIODeviceToRingbuffer()
+if (device->bytesAvailable() <= 0)   // ← a plain QIODevice reports 0 forever
+    return;                          // ← nothing is read, ever
+```
+
+`SfxMixer` derives from `QIODevice` and only implements `readData()`. A plain
+`QIODevice` has no data of its own, so `bytesAvailable()` returned 0, the pull
+loop bailed out immediately, the sink never entered `ActiveState` and the game
+was completely silent. The mixer was a *push* device pretending to be a *pull*
+device.
+
+**Fix:** override `bytesAvailable()` in `SfxMixer` and report a generator-style
+chunk (200 ms of the sink's format, rounded down to whole frames). The mixer
+always has something to hand out — silence plus whatever voices are queued.
+
+Alongside the fix, the audio path grew the health counters that made the
+diagnosis possible in the first place:
+
+| Counter | Meaning |
+| --- | --- |
+| `voicesStarted` | sounds queued by the game thread |
+| `framesWritten` | frames that actually left the mixer (proves the sink pulls) |
+| `peak` | loudest sample since the last status line (proves it is not silent) |
+
+They are logged at startup (`pacman-audio: device … state …`), every 10 s while
+the game is playing (`pacman-audio: playing triggers 50 sink 0 error 0 frames
+645824 seconds 13.4547 peak 1`) and whenever the sink leaves `ActiveState`.
+On-device logcat now proves the chain end to end, and `dumpsys
+media.audio_flinger` shows our `AudioTrack` being added and removed with the
+app.
+
+Two smaller fixes came out of the same round:
+
+- `kSfxGain` (0.6, the old `SoundEffect` volume) was declared but never applied
+  to the mixed samples — it is now applied per voice.
+- Two overlapping munches summed to 1.016 → clipping. The mix is now clamped to
+  [-1, 1] after summing (peak reads exactly 1).
+
+**Regression guard:** `ViewTest.testMixerFeedsTheAudioSink` asserts that the sink
+reads frames and that the peak is > 0 (skipped when the machine has no audio
+device).
+
+**Device result after the fix:** 0 `pacman-perf: tick gap` lines, 0 `sfx
+trigger blocked`, one benign 41 ms render-thread gap at startup, and the user
+confirmed on the phone that the game plays **without lag**.
 
 ---
 
@@ -137,7 +195,7 @@ USB disconnect.
 | APK generation | ✅ **Done** | `android-build-release-unsigned.apk` |
 | APK signing | ✅ Done | debug keystore, `apksigner verify` passes |
 | Install on a device | ✅ Done | Tecno A059 (Android 16, arm64-v8a, fr-BE); `adb install -r` + launch OK, bundled levels confirmed in logcat |
-| Device runtime testing | 🟡 In progress | levels + touch verified; audio-mixer confirmation round pending (USB dropped during the last one) |
+| Device runtime testing | 🟢 In progress | levels + touch verified; **audio mixer verified** (silent-mixer bug found and fixed, §8); lifecycle/orientation/back button still open |
 
 **Overall: build pipeline 100% complete; first device test done, device testing in progress.**
 
@@ -153,8 +211,9 @@ USB disconnect.
 2. ~~**Touch input**~~ **Resolved**: swipe/drag with a dead zone + tap-to-start in
    `Main.qml` (commit `1623f57`); confirmed working by hand on the phone.
 3. **Audio**: per-play `QSoundEffect` restarts caused every frame gap (root cause
-   §7 above); reworked into the persistent-stream mixer (commit `bedd1dc`),
-   hardware confirmation still owed.
+   §7 above); reworked into the persistent-stream mixer (commit `bedd1dc`).
+   That mixer was in turn silent until `bytesAvailable()` was overridden (§8);
+   both are fixed and verified on the phone — audio flows, no frame gaps.
 4. **Lifecycle**: suspend/resume pause handling untested on device.
 5. **Orientation / safe areas / back button**: not handled yet (see `todo.md` Phase 5).
 6. **Signing**: currently a shared debug keystore; release signing needs a real key.
@@ -168,14 +227,16 @@ build-android.sh                    # full pipeline (configure → build → APK
 build-android-core.sh               # core-only build (kept as a fast smoke test)
 app/CMakeLists.txt                  # + QT_ANDROID_COMPILE_SDK_VERSION property
 core/src/Level.cpp                  # classic-locale istringstream float parsing (portable)
+app/SfxPlayer.{hpp,cpp}             # persistent-stream mixer: bytesAvailable() override,
+                                    # gain, clamp, health counters (§8)
+tests/test_view.cpp                 # + ViewTest.testMixerFeedsTheAudioSink (regression guard)
 android/                            # manifest/activity reference material (Qt templates drive the real build)
 ~/Qt/6.12.0/android_arm64_v8a/      # Qt kit (4 cmake dirs restored from armv7 + bitness fix)
 ```
 
 ---
 
-**Status:** ✅ Build pipeline working end-to-end; installed and launched on hardware
-**Next Action:** confirm the audio mixer on hardware (audible munches, tick gaps at the
-~5/game mute baseline, no `sfx trigger blocked` — commands in `ANDROID.md`), then the
-remaining `todo.md` Phase 5 items: lifecycle, orientation/safe areas, back button,
-settings persistence.
+**Status:** ✅ Build pipeline working end-to-end; installed and launched on hardware;
+audio verified on the phone (mixer fixed + audible, no frame gaps)
+**Next Action:** the remaining `todo.md` Phase 5 items: lifecycle
+suspend/resume, orientation/safe areas, back button, settings persistence.

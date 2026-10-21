@@ -188,11 +188,14 @@ Device quirks (learned 2026-10-20 on a Tecno A059 / Android 16 / fr-BE):
    loads from there. **Verified on hardware** (logcat shows the bundled path).
 2. **Touch input — resolved.** Swipe/drag to turn with a dead zone, tap to start,
    in `Main.qml` (commit `1623f57`); confirmed working by hand on a phone.
-3. **Audio — reworked, verification pending.** Per-play `QSoundEffect` restarts
-   stalled the frame pipeline (root cause #7 in `ANDROID_BUILD_STATUS.md`);
-   replaced by the persistent-stream mixer in `app/SfxPlayer.*` (commit
-   `bedd1dc`). One confirmation round on hardware still owed: audible munches,
-   tick gaps at the ~5-per-game baseline, no `sfx trigger blocked` lines.
+3. **Audio — resolved.** Per-play `QSoundEffect` restarts stalled the frame pipeline
+   (root cause #7 in `ANDROID_BUILD_STATUS.md`); replaced by the persistent-stream
+   mixer in `app/SfxPlayer.*` (commit `bedd1dc`). That mixer was then found to be
+   *silent*: Qt only pulls from a user `QIODevice` when it reports
+   `bytesAvailable() > 0`, so the sink idled without reading a frame (root cause #8).
+   Fixed and **verified on hardware** — audio flows, 0 tick gaps, 0
+   `sfx trigger blocked`; the health counters (`pacman-audio: playing … frames … peak …`)
+   make the path observable in logcat.
 4. Suspend/resume lifecycle handling untested on device.
 5. Orientation/safe areas/back button not handled (Qt activity, not the
    reference `android/MainActivity.java`).
@@ -215,7 +218,9 @@ Device quirks (learned 2026-10-20 on a Tecno A059 / Android 16 / fr-BE):
   and mixed on the audio callback thread (4 voices, linear resampling to the
   device format). Replaces the QML `SoundEffect`s, which restarted the platform
   audio stream on every pellet and stuttered the game (see
-  `ANDROID_BUILD_STATUS.md` §7).
+  `ANDROID_BUILD_STATUS.md` §7). The mixer overrides `bytesAvailable()` so Qt
+  actually pulls from it (§8) and reports health counters
+  (`voicesStarted` / `framesWritten` / `peak`).
 - `app/Main.qml`: touch controls (`MouseArea` over the board: swipe/drag with a
   dead zone, tap = Space) plus a frame-gap diagnostic log.
 - `app/GameController.cpp` / `app/main.cpp`: perf probes that log only on
@@ -235,6 +240,9 @@ adb logcat -d | grep -aE "pacman|sfx"  # dump after a round
 
 # useful lines (our qInfo tag is `default`, Qt's own is `Qt`):
 #   pacman: using levels bundled …          bundled levels loaded
+#   pacman-audio: device "…" rate … state … audio device + sink opened at startup
+#   pacman-audio: playing triggers N sink 0 error 0 frames F seconds S peak P
+#                                          audio health line (every 10 s while playing)
 #   pacman-perf: tick gap N ms; work …      UI-thread stall (should stay rare/absent)
 #   pacman-perf: render-thread gap N ms     scene-graph stall
 #   pacman: sfx trigger blocked N ms        sound trigger blocked on the UI thread
