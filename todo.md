@@ -16,8 +16,8 @@ Legend: `[ ]` open · `[x]` done · `[!]` blocked · sizes **S** (< 1 h) / **M**
 | Tests | 100 core tests, 11 CTest suites, all passing (plus the `pacman_tests_reach` reachability binary and, with `PACMAN_BUILD_QT_TESTS=ON`, the `QtView` suite) |
 | Docs | `README.md` + `docs/` (architecture, code tour, gameplay rules, level format, testing) |
 | Tools | `tools/pacman_text` terminal player and `tools/ai_demo` |
-| View | `app/` Qt Quick app — `GameController` bridge, classic vector arcade rendering (ported from the original GTK look), sound effects, high score persistence, keyboard input, and a passing headless QTest. **Fully documented in `docs/view-implementation.md`** |
-| Android | **build pipeline complete + device tested** — Phase 5: signed APK installs/launches on a phone with bundled levels, touch input landed, **audio mixer verified** (silent-mixer bug found and fixed); lifecycle, orientation, back button and settings still open |
+| View | `app/` Qt Quick app — `GameController` bridge, classic vector arcade rendering (ported from the original GTK look), sound effects, high score + settings persistence, keyboard input, a pause menu and a passing headless QTest. **Fully documented in `docs/view-implementation.md`** |
+| Android | **build pipeline complete + device tested** — Phase 5: signed APK installs/launches on a phone with bundled levels, touch input landed, **audio mixer verified** (silent-mixer bug found and fixed); lifecycle, orientation/safe areas, back button/immersive mode and settings are implemented too (see the Phase 5 list) |
 | Git | repository initialised, branch `master`; Phase 4 sprite/audio work committed (see `HANDOFF.md`) |
 
 Build and test, for reference:
@@ -246,13 +246,39 @@ design decisions, testing, and verification checklist.
       trigger blocked` and a single benign 41 ms render-thread gap at startup. The user
       confirmed no stutter. The diagnostics stay in (anomaly-only) for now; the
       keep-vs-remove decision moves to the end of Phase 5.
-- [ ] **Lifecycle**: handle suspend/resume — the model should pause (`Engine` time scale 0) and
+- [x] **Lifecycle**: handle suspend/resume — the model should pause (`Engine` time scale 0) and
       resume without a giant `dt` spike; the existing frame clamp already helps.
-- [ ] **Orientation and safe areas**: landscape-only, insets-aware layout.
-- [ ] **Back button / immersive mode**: full-screen, back = pause menu.
-- [ ] **Settings persistence** (sound, high score): the model has no file I/O by design, so this
+      *Done:* `GameController` listens to `QGuiApplication::applicationStateChanged` and
+      suspends on `Qt::ApplicationSuspended` only (a lost focus on the desktop must not freeze
+      the game). Suspending stops the tick timer outright and restarts the frame clock on
+      resume, so the time spent in the background is thrown away instead of arriving as one
+      huge frame; the hitch detector is reset too, so a suspend is not reported as a stall.
+      Covered by `ViewTest.testSuspendingFreezesTheModel`.
+- [x] **Orientation and safe areas**: landscape-only, insets-aware layout.
+      *Done:* the activity is locked to `sensorLandscape` and the window is immersive; the new
+      `app/ScreenInsets` follows `QWindow::safeAreaMargins()` (Qt 6.9+, guarded by a
+      `QT_VERSION` check) and the QML root column is inset by it, so the HUD stays clear of
+      notches, rounded corners and system bars.
+- [x] **Back button / immersive mode**: full-screen, back = pause menu.
+      *Done:* `android/package/src/org/pacman/qt/MainActivity.java` extends Qt's `QtActivity`
+      and adds the immersive flags, the orientation and the back-button interception (Android
+      hands the press to the activity, and Qt's own input delegate swallows it — an
+      `OnBackInvokedCallback` on API 33+, a consumed key event on older versions). The press is
+      forwarded through JNI (`app/AndroidBridge.cpp`) to the QML pause menu; `Qt.Key_Back` and
+      `Qt.Key_Escape` open the same menu on the desktop.
+      Covered by `ViewTest.testBackKeyOpensThePauseMenu` and
+      `ViewTest.testAndroidBackBridgeOpensThePauseMenu`.
+- [x] **Settings persistence** (sound, high score): the model has no file I/O by design, so this
       belongs to the view layer (or a separate `Storage` seam added to `core/` on purpose).
-- [ ] **Touch-friendly level pacing**: same levels, maybe a reduced speed setting.
+      *Done:* the high score already lived in `QSettings`; the new `app/AppSettings` holds the
+      sound switch and the slow-mode switch next to it and persists them.
+      `SfxPlayer::setEnabled()` makes the mixer obey the sound setting without closing the sink.
+      Covered by `ViewTest.testSettingsArePersisted`.
+- [x] **Touch-friendly level pacing**: same levels, maybe a reduced speed setting.
+      *Done:* "slow mode" runs the model at 80% speed (`GameController::kSlowFactor`) — the
+      simulation stays deterministic, it just advances with fewer steps per second. The switch
+      lives in `AppSettings` and is reachable from the pause menu.
+      Covered by `ViewTest.testSlowModeScalesTheModel`.
 
 ## Phase 6 — long-term quality (S/M, ongoing)
 

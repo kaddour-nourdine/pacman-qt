@@ -156,11 +156,11 @@ emulator -avd pacman-avd -no-snapshot-load &
 ### Run the App
 
 ```bash
-# Qt's template activity — the installed package is org.qtproject.example.pacman_app
-# (NOT org.pacman.qt: only android/package/ is wired into the build, via
-# QT_ANDROID_PACKAGE_SOURCE_DIR — it carries the launcher icon; Qt's template
-# still drives the manifest and the activity)
-adb shell am start -n org.qtproject.example.pacman_app/org.qtproject.qt.android.bindings.QtActivity
+# The launcher activity is ours (org.pacman.qt.MainActivity); the installed
+# package is org.qtproject.example.pacman_app (only android/package/ is wired
+# into the build, via QT_ANDROID_PACKAGE_SOURCE_DIR — it carries the manifest,
+# the activity and the launcher icon).
+adb shell am start -n org.qtproject.example.pacman_app/org.pacman.qt.MainActivity
 
 # equivalent one-liner:
 adb shell monkey -p org.qtproject.example.pacman_app 1
@@ -198,9 +198,18 @@ Device quirks (learned 2026-10-20 on a Tecno A059 / Android 16 / fr-BE):
    Fixed and **verified on hardware** — audio flows, 0 tick gaps, 0
    `sfx trigger blocked`; the health counters (`pacman-audio: playing … frames … peak …`)
    make the path observable in logcat.
-4. Suspend/resume lifecycle handling untested on device.
-5. Orientation/safe areas/back button not handled (Qt activity, not the
-   reference `android/MainActivity.java`).
+4. **Lifecycle — implemented, not yet re-verified on a device.** `GameController` listens to
+   `QGuiApplication::applicationStateChanged` and suspends on `Qt::ApplicationSuspended`:
+   the tick timer stops, the time scale goes to 0 and the frame clock is restarted on
+   resume, so no time is replayed. A desktop focus loss (`ApplicationInactive`) does *not*
+   freeze the game. Covered by `ViewTest.testSuspendingFreezesTheModel`.
+5. **Orientation / safe areas / back button — implemented, not yet re-verified on a device.**
+   The app now ships its own activity (`android/package/src/org/pacman/qt/MainActivity.java`)
+   and its own manifest (`android/package/AndroidManifest.xml`): landscape-only
+   (`sensorLandscape`), immersive mode, safe-area insets from
+   `QWindow::safeAreaMargins()`, and the back button forwarded to the pause menu through
+   JNI (`app/AndroidBridge.cpp`). Covered by `ViewTest.testBackKeyOpensThePauseMenu` and
+   `ViewTest.testAndroidBackBridgeOpensThePauseMenu`.
 6. Signing uses a shared debug keystore — create a real key for releases.
 
 ## Android-Specific Code Changes So Far
@@ -230,6 +239,27 @@ Device quirks (learned 2026-10-20 on a Tecno A059 / Android 16 / fr-BE):
   `android/package/` — that directory holds the launcher icon (adaptive vector for
   API 26+, legacy PNGs for older versions); the artwork lives in `android/icon/`
   with `generate-icons.sh` to regenerate the bitmaps.
+- `android/package/AndroidManifest.xml`: **replaces** the manifest that
+  `androiddeployqt` generates (the package source directory is copied verbatim, so
+  the custom one survives). It keeps everything Qt needs (`QtApplication`,
+  `android.app.lib_name`, the `FileProvider`) and points the launcher activity at
+  `org.pacman.qt.MainActivity`.
+- `android/package/src/org/pacman/qt/MainActivity.java`: extends Qt's `QtActivity`
+  and adds the landscape lock, the immersive flags (`FLAG_KEEP_SCREEN_ON` +
+  `SYSTEM_UI_FLAG_IMMERSIVE_STICKY`) and the back-button interception.
+- `app/AndroidBridge.{hpp,cpp}`: the JNI side of the back button.
+  `Java_org_pacman_qt_MainActivity_nativeBackPressed()` is exported by
+  `libpacman_app_arm64-v8a.so` and queues `backPressed()` onto the Qt thread;
+  the QML side opens the pause menu. The Java side registers its
+  `OnBackInvokedCallback` **after** `super.onResume()` — Qt registers its own
+  callback there, and the dispatcher keeps only one callback per priority.
+- `app/ScreenInsets.{hpp,cpp}`: follows `QWindow::safeAreaMargins()` (Qt 6.9+,
+  guarded by a `QT_VERSION` check) and publishes it as the `insets` context
+  property; `Main.qml` insets its root column by it.
+- `app/AppSettings.{hpp,cpp}`: persistent settings (`QSettings`) — sound on/off
+  and slow mode (the model runs at 80% speed). Reachable from the pause menu.
+- `app/GameController.{hpp,cpp}`: suspend/resume handling (`setSuspended()`,
+  `applyTimeScale()`), the `suspended` property and `game.settings`.
 - `app/GameController.cpp` / `app/main.cpp`: perf probes that log only on
   anomalies (`pacman-perf: tick gap … / render-thread gap …`, plus a ≥4 ms
   tripwire when a sound trigger blocks).

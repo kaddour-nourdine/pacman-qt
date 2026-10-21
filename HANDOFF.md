@@ -11,12 +11,12 @@ holds only the state and the constraints.
 | Working directory | `/home/nourdine/Development/pacman-qt` |
 | Version control | git (branch master) |
 | Build | clean, no warnings with `-Wall -Wextra -Wpedantic` |
-| Tests | 100 core tests, 11 CTest suites, **11/11 passing** (plus `pacman_tests_reach` and, with `PACMAN_BUILD_QT_TESTS=ON`, the `QtView` suite: **12/12 passing**) |
+| Tests | 100 core tests, 11 CTest suites, **11/11 passing** (plus `pacman_tests_reach` and, with `PACMAN_BUILD_QT_TESTS=ON`, the `QtView` suite: **12/12 passing**, 11 QTest cases) |
 | Toolchain used | CMake 4.3.0, g++ (GCC) 16.2.1, Linux, 16 cores |
 | Qt | **6.11 installed** (`qt6-qtbase-devel`, `qt6-qtdeclarative-devel`); QtQuick/QtQuick.Window/Controls runtime modules present |
 | View | `app/` builds with `-DPACMAN_BUILD_APP=ON`; the `GameController` + QML module live in a `pacman_view` static library, `pacman_app` is a thin `main.cpp`; runs under `QT_QPA_PLATFORM=offscreen`; draws the maze and actors as vectors in the classic arcade style (ported from the original GTK project) and plays WAV sound effects |
-| Working tree | clean (last commits: `131c6e3` bundled levels, `1623f57` touch input, `bedd1dc` audio mixer + on-device diagnostics, docs) |
-| Device tested | Tecno A059 (AsteroidsEEA), Android 16, arm64-v8a, fr-BE — APK installed/launched, bundled levels + touch confirmed; **audio mixer verified** (silent-mixer bug found and fixed, see `ANDROID_BUILD_STATUS.md` §8) |
+| Working tree | clean at `e1d4d16` before the Phase 5 completion work (lifecycle, safe areas, back button, settings) |
+| Device tested | Tecno A059 (AsteroidsEEA), Android 16, arm64-v8a, fr-BE — APK installed/launched, bundled levels + touch confirmed; **audio mixer verified** (silent-mixer bug found and fixed, see `ANDROID_BUILD_STATUS.md` §8). The lifecycle/back-button work is **not** on-device verified yet. |
 | Last verified commands | `cmake -S . -B build -DPACMAN_BUILD_APP=ON -DPACMAN_BUILD_QT_TESTS=ON && cmake --build build -j16 && ctest --test-dir build` |
 
 `build/` exists and is current, so a rebuild is incremental.
@@ -54,6 +54,16 @@ holds only the state and the constraints.
   decoded WAVs into it — QML only calls `sfx.playMunch()` / `sfx.playPower()`.
   `GameController` and the QML module are
   compiled into a `pacman_view` static library, so the headless test can link the same view.
+- `app/AppSettings.{hpp,cpp}` — persistent settings (`QSettings`): sound on/off and slow mode
+  (the model runs at 80% speed). Owned by `GameController`, reachable from QML as
+  `game.settings`.
+- `app/ScreenInsets.{hpp,cpp}` — follows `QWindow::safeAreaMargins()` (Qt 6.9+) and publishes it
+  as the `insets` context property for the QML layout.
+- `app/AndroidBridge.{hpp,cpp}` — the JNI back-button bridge
+  (`Java_org_pacman_qt_MainActivity_nativeBackPressed`), exported by the app library on Android.
+- `android/package/` — the `QT_ANDROID_PACKAGE_SOURCE_DIR`: the manifest that replaces the
+  generated one, our activity (`src/org/pacman/qt/MainActivity.java`: landscape, immersive mode,
+  back-button interception) and the launcher icon `res/`.
 - `tests/` — custom harness, no external dependency; `tests/TestLevelManager.cpp` covers the
   loader (temp directories, all-or-nothing, sorted directory scan) and `tests/TestReachability.cpp`
   is a separate binary that BFS-checks every level. `tests/test_view.cpp` is a headless `QTest`
@@ -102,6 +112,25 @@ holds only the state and the constraints.
    gaps, 0 `sfx trigger blocked`, and the user confirmed the game plays without lag.
    The perf diagnostics ship in the app and only log on anomalies — decide
    keep-vs-remove at the end of Phase 5.
+10. **Phase 5 feature work is implemented, awaiting a device pass** — the four remaining
+    `todo.md` items were closed in one session:
+    - *Lifecycle*: `GameController` suspends on `Qt::ApplicationSuspended` (not
+      `ApplicationInactive` — a desktop focus loss must not freeze the game): the tick timer
+      stops, the time scale goes to 0 and the frame clock is restarted on resume, so the time
+      spent in the background is thrown away instead of arriving as one huge frame.
+    - *Orientation / safe areas*: the activity locks the orientation to `sensorLandscape` and
+      goes immersive; `app/ScreenInsets` follows `QWindow::safeAreaMargins()` and the QML root
+      column is inset by it.
+    - *Back button / immersive mode*: Android hands the back press to the activity and Qt's own
+      input delegate swallows it, so `android/package/src/org/pacman/qt/MainActivity.java`
+      intercepts it (`dispatchKeyEvent` + an `OnBackInvokedCallback` registered **after**
+      `super.onResume()`) and forwards it through JNI to the QML pause menu.
+    - *Settings / pacing*: `app/AppSettings` persists the sound switch and the slow mode
+      (the model runs at 80% speed — the simulation stays deterministic).
+
+    All of it is covered by the headless `QtView` suite (11 cases) and the packaged APK was
+    verified with `aapt2`/`nm` (see `ANDROID_BUILD_STATUS.md` §9) — but **no phone was
+    connected**, so the on-device behaviour is still unproven.
 
 ## Suggested first action next session
 
@@ -182,21 +211,25 @@ adb shell wm dismiss-keyguard
 ./build-android.sh && adb install -r build-android/app/android-build/build/outputs/apk/release/pacman_app-signed.apk
 adb logcat -G4M; adb logcat -c
 adb logcat -v time > /tmp/logcat-device.txt &   # capture survives buffer rotation
-adb shell am start -n org.qtproject.example.pacman_app/org.qtproject.qt.android.bindings.QtActivity
+adb shell am start -n org.qtproject.example.pacman_app/org.pacman.qt.MainActivity
 ```
-Then work through the remaining `todo.md` Phase 5 items: lifecycle suspend/resume,
-orientation/safe areas, back button / immersive mode, settings persistence.
+Then verify on the phone what the headless tests can only approximate: the back button
+opens the pause menu (and does not close the app), the game is landscape and full-screen,
+backgrounding the app freezes the game and coming back does not replay the lost time,
+and the sound/speed switches survive a restart.
 
 Device quirks learned: the installed package is `org.qtproject.example.pacman_app`
 (Qt's template — only `android/package/` is wired into the build, as the
-`QT_ANDROID_PACKAGE_SOURCE_DIR` that carries the launcher icon; the old
-`android/AndroidManifest.xml` is reference material); our `qInfo` lands under
+`QT_ANDROID_PACKAGE_SOURCE_DIR` that carries the manifest, the activity and the launcher
+icon); the launcher activity is now `org.pacman.qt.MainActivity` (ours, not Qt's);
+our `qInfo` lands under
 logcat tag `default` (Qt's own lines use `Qt`);
 launching while the screen dozes and `main()` stalls until the screen wakes; on the
 desktop Qt logs go to syslog unless `QT_FORCE_STDERR_LOGGING=1` is set.
 
-**Still open (Phase 5, details in `todo.md`)**: lifecycle suspend/resume, orientation/safe
-areas, back button, settings persistence, touch-friendly pacing, release signing. Also
-decide whether the perf diagnostics stay enabled (they only log on anomalies).
+**Still open**: a device pass over the new lifecycle/back-button work, release signing
+(a real key instead of the shared debug keystore) and the decision whether the perf
+diagnostics stay enabled (they only log on anomalies). The `todo.md` Phase 6 items
+(CI, coverage, parser fuzzer, determinism regression) are untouched.
 
 Minor polish (extra audio effects) is tracked in `todo.md`.
