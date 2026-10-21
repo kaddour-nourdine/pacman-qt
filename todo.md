@@ -54,7 +54,7 @@ cmake -S . -B build -DPACMAN_BUILD_APP=ON -DPACMAN_BUILD_QT_TESTS=ON && cmake --
 
 ### Model polish (documented as intentional differences)
 - [ ] **Ghost house release timers** (M): refine exit pathing / `LeavingHouse` targeting.
-- [ ] **Blinky bounce quirk** (S): `forbidUpwardTurn()` forbids Up at the spawn row, so Blinky may re-enter the house in `level1.txt`.
+- [x] **Blinky bounce quirk** (S): disabled `forbidUpwardTurn()` (returns `false`); the restriction was tuned for an older layout and made Blinky reverse into the house. Determinism golden value regenerated.
 - [ ] **Pixel-accurate collision** (M, optional): currently tile-based by design.
 
 ### Long-term
