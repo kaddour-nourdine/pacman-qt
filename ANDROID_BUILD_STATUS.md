@@ -179,7 +179,8 @@ device).
 
 **Device result after the fix:** 0 `pacman-perf: tick gap` lines, 0 `sfx
 trigger blocked`, one benign 41 ms render-thread gap at startup, and the user
-confirmed on the phone that the game plays **without lag**.
+confirmed on the phone that the munches are **clearly audible** and that the
+game plays **without lag**.
 
 ---
 

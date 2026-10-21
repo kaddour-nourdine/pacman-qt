@@ -240,7 +240,7 @@ design decisions, testing, and verification checklist.
       audio path observable, and `ViewTest.testMixerFeedsTheAudioSink` guards the regression.
       On-device logcat: `pacman-audio: playing triggers 50 sink 0 error 0 frames 645824
       seconds 13.4547 peak 1` — audio flows, **0** tick gaps, **0** `sfx trigger blocked`;
-      the user confirmed the game plays without lag.
+      the user confirmed the munches are clearly audible and that the game plays without lag.
 - [x] **Frame pacing on device**: the instrumentation did its job — after the mixer fix a
       play-through on the phone logged **0** `pacman-perf: tick gap` lines, **0** `sfx
       trigger blocked` and a single benign 41 ms render-thread gap at startup. The user
