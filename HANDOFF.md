@@ -14,7 +14,7 @@ the constraints.
 | Tests | 139 core tests + `QtView` (12 CTest suites), all passing |
 | Toolchain | CMake 4.3.0, g++ (GCC) 16.2.1, Linux, 16 cores |
 | Qt | 6.12 (`~/Qt/6.12.0/gcc_64` for desktop, `android_arm64_v8a` for Android) |
-| View | `app/` builds with `-DPACMAN_BUILD_APP=ON`; runs headless (`QT_QPA_PLATFORM=offscreen`) |
+| View | `app/` builds with `-DPACMAN_BUILD_APP=ON`; runs on a real display and headless (`QT_QPA_PLATFORM=offscreen`) |
 | Device tested | Tecno A059 (Android 16, arm64-v8a, fr-BE): touch, audio mixer, lifecycle, safe areas, back button, settings, free orientation |
 | CI | `.github/workflows/ci.yml` (core + Qt jobs, Linux) |
 
