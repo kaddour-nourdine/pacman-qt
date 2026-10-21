@@ -79,6 +79,18 @@ if(ANDROID)
     set_target_properties(pacman_app PROPERTIES
         QT_ANDROID_COMPILE_SDK_VERSION "android-36"
     )
+
+    # Launcher icon and label.
+    #
+    # QT_ANDROID_PACKAGE_SOURCE_DIR contributes the res/ tree (adaptive icon
+    # for API 26+ plus the legacy bitmaps); QT_ANDROID_APP_ICON puts
+    # android:icon="@mipmap/ic_launcher" into the generated manifest, and
+    # QT_ANDROID_APP_NAME replaces the default "pacman_app" label.
+    set_target_properties(pacman_app PROPERTIES
+        QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../android/package"
+        QT_ANDROID_APP_ICON "@mipmap/ic_launcher"
+        QT_ANDROID_APP_NAME "Pac-Man"
+    )
 endif()
 
 qt_finalize_executable(pacman_app)
