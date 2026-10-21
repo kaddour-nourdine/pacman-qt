@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Adaptive-icon foreground (API 26+).
+
+  The canvas is 108x108dp as the platform requires; only the middle 66x66dp
+  is guaranteed to be visible, so the Pac-Man (a circle of radius 33dp, mouth
+  open to the right, one eye) is centred there and the background is a solid
+  colour - see package/res/values/ic_launcher_colors.xml.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Pac-Man: from the circle centre out to the mouth, around the body, back. -->
+    <path
+        android:fillColor="#FFFF00"
+        android:pathData="M54,54 L82.58,70.5 A33,33 0 1 1 82.58,37.5 Z" />
+
+    <!-- eye -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M57.3,43 A4,4 0 1 1 65.3,43 A4,4 0 1 1 57.3,43 Z" />
+</vector>
