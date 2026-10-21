@@ -317,8 +317,21 @@ design decisions, testing, and verification checklist.
       the golden value, a different seed leads to a different game, and the replay really
       exercises the game (pellets, a power pellet, frightened mode, a death) so the golden value
       cannot pin a game that does nothing.
-- [ ] **Performance**: BFS per decision for eyes is fine at 21×21 but measure it; add caching if
+- [x] **Performance**: BFS per decision for eyes is fine at 21×21 but measure it; add caching if
       a bigger level ever needs it.
+      *Done:* `tools/pacman_bench` measures the path search and the whole simulation on a Ryzen 7
+      5800H (RelWithDebInfo). The cost is the walk at ~29 ns per cell: `level1` corner-to-corner
+      6.5 µs, open 50×50 75 µs, open 100×100 291 µs — linear in the cells, 100× the board is 100×
+      the search. The four bookkeeping vectors allocated per call (`Maze.cpp:155-160`) add only
+      144 ns on `level1` and 842 ns on a 100×100 board (0.3–2 %). A ghost decides at most 16
+      times per simulated second; four ghosts coming home cost ~415 µs per simulated second
+      worst case (four hundredths of one per cent of the 8.33 ms step budget). End to end, the
+      simulation runs 15 000–24 000× the 120 steps/s budget with the view's loop, and the
+      eyes-heavy case is 20 % slower than normal play — exactly the price of the searches. On a
+      540×540 board (290 000 cells, ~650× `level1`) a single decision would approach the step
+      budget; both halves are linear so there is no cliff. No cache and no scratch buffers are
+      needed: reusing buffers could save under 3 % today, not worth the const/thread-safety cost.
+      Numbers live in [`docs/performance.md`](docs/performance.md).
 - [x] **Install/export rules** for `pacman_core` so the Android app and any future tooling can
       `find_package(pacman_core)`.
       *Done:* `pacman_core` installs its headers, its static library and a package configuration
