@@ -1,0 +1,8 @@
+@PACKAGE_INIT@
+
+# The package is called pacman_core, the target it brings is pacman::core
+# (the same name the build tree uses, so a consumer does not have to care
+# whether it found the sources or an installation).
+include("${CMAKE_CURRENT_LIST_DIR}/pacman_coreTargets.cmake")
+
+check_required_components(pacman_core)

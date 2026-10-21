@@ -92,6 +92,7 @@ slow mode.
 CMakeLists.txt              top-level project: language standard, options, sub-projects
 core/                       the model library (no graphics, no Qt)
   CMakeLists.txt            builds the static library pacman_core (alias pacman::core)
+                            and installs it with a find_package() package config
   include/pacman/           public headers, one per concept
   src/                      implementations
 app/                        the Qt Quick view (built only with -DPACMAN_BUILD_APP=ON)
@@ -116,6 +117,8 @@ levels/
                                       installed app or phone can load them)
 tests/                      the test suite (104 tests, no external framework)
   test_view.cpp             optional headless Qt view test (PACMAN_BUILD_QT_TESTS)
+  install_check.cmake       proves that pacman_core installs and is found again
+  install_consumer/         a project outside the tree, built against the installed package
 docs/                       the documentation you are reading
 ```
 

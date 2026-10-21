@@ -307,8 +307,14 @@ design decisions, testing, and verification checklist.
       cannot pin a game that does nothing.
 - [ ] **Performance**: BFS per decision for eyes is fine at 21×21 but measure it; add caching if
       a bigger level ever needs it.
-- [ ] **Install/export rules** for `pacman_core` so the Android app and any future tooling can
+- [x] **Install/export rules** for `pacman_core` so the Android app and any future tooling can
       `find_package(pacman_core)`.
+      *Done:* `pacman_core` installs its headers, its static library and a package configuration
+      (`pacman_coreConfig.cmake` + a version file), so an outside project can do
+      `find_package(pacman_core REQUIRED)` and link `pacman::core` — the same target name the
+      build tree uses. The `InstallCheck` CTest test proves it: it installs into a temporary
+      prefix and builds `tests/install_consumer` — a project outside this tree — against the
+      installed package, then runs it.
 - [ ] Keep `docs/` in sync: any new rule belongs in `docs/gameplay-rules.md`, any new file in
       `docs/code-tour.md`.
 
