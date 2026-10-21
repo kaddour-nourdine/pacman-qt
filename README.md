@@ -25,7 +25,8 @@ The project follows a **model / view split**:
 | Qt Quick / QML view, window, input (`app/`, needs Qt 6) | Done (classic vector arcade rendering, HUD, sound effects) |
 | Headless terminal renderer (`tools/pacman_text`) | Done |
 | Automated headless Qt view test (`tests/test_view.cpp`, `PACMAN_BUILD_QT_TESTS`) | Done (loads QML and checks a key event reaches the controller) |
-| Android packaging | Build pipeline complete — `./build-android.sh` cross-compiles the Qt app for arm64-v8a and produces a signed APK (device testing still open) |
+| Android packaging | Build pipeline complete — `./build-android.sh` cross-compiles the Qt app for arm64-v8a and produces a signed APK |
+| Android on-device | Verified on a phone (Tecno A059, Android 16): touch controls, audio (persistent-stream mixer), bundled levels, Pac-Man launcher icon |
 
 The model runs on its own: `Game.playsRealLevelEndToEnd` plays a level for ten simulated
 seconds and checks that pellets get eaten and the ghosts leave their house. To watch it without
