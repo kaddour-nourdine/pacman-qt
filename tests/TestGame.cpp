@@ -104,7 +104,7 @@ std::vector<std::string> bigMap() {
     return lines;
 }
 
-}  // namespace
+} // namespace
 
 PAC_TEST(Game, startsReadyAndFrozen) {
     Game game(pactest::makeLevel(pactest::gameMap(), __FILE__, __LINE__));
@@ -417,7 +417,8 @@ PAC_TEST(Game, playsRealLevelEndToEnd) {
     CHECK_EQ(game.ghosts()[1].spawnX(), 10);
     CHECK_EQ(game.ghosts()[1].spawnY(), 10);
 
-    const Direction kPattern[] = {Direction::Left, Direction::Down, Direction::Right, Direction::Up};
+    const Direction kPattern[] = {Direction::Left, Direction::Down, Direction::Right,
+                                  Direction::Up};
     for (int frame = 0; frame < 600; ++frame) {
         if (game.state() == GameState::Ready) {
             game.start();
@@ -691,4 +692,3 @@ PAC_TEST(Game, eyesAreNotReleasedByTheSchedule) {
     CHECK(!pinky.isReleased());
     CHECK(pinky.isEyes());
 }
-

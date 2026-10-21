@@ -6,7 +6,7 @@
 namespace pac {
 
 class Player : public Entity {
-public:
+  public:
     explicit Player(Maze& maze);
 
     void reset();
@@ -17,9 +17,9 @@ public:
 
     float animationPhase() const;
 
-private:
+  private:
     int pelletsEaten_ = 0;
     int powerPelletsEaten_ = 0;
 };
 
-}
+} // namespace pac

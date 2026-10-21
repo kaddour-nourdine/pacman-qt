@@ -8,7 +8,7 @@
 namespace pac {
 
 class LevelManager {
-public:
+  public:
     LevelManager() = default;
     explicit LevelManager(std::vector<Level> levels);
 
@@ -24,8 +24,8 @@ public:
     const Level& levelFor(int levelNumber) const;
     const std::string& nameFor(int levelNumber) const;
 
-private:
+  private:
     std::vector<Level> levels_;
 };
 
-}
+} // namespace pac

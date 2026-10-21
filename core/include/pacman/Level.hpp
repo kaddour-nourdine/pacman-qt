@@ -28,7 +28,7 @@ struct GhostSpawn {
 };
 
 class Level {
-public:
+  public:
     static constexpr int kGhostCount = 4;
 
     static bool parse(const std::vector<std::string>& lines, Level& out, std::string* error);
@@ -44,7 +44,8 @@ public:
         if (x < 0 || x >= cols_ || y < 0 || y >= rows_) {
             return Tile::Wall;
         }
-        return tiles_[static_cast<std::size_t>(y) * static_cast<std::size_t>(cols_) + static_cast<std::size_t>(x)];
+        return tiles_[static_cast<std::size_t>(y) * static_cast<std::size_t>(cols_) +
+                      static_cast<std::size_t>(x)];
     }
 
     int playerX() const { return playerX_; }
@@ -61,7 +62,7 @@ public:
 
     const LevelConfig& config() const { return config_; }
 
-private:
+  private:
     std::string name_ = "untitled";
     int cols_ = 0;
     int rows_ = 0;
@@ -74,4 +75,4 @@ private:
     int pelletCount_ = 0;
 };
 
-}
+} // namespace pac

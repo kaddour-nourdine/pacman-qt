@@ -9,14 +9,10 @@ namespace {
 
 constexpr float kEpsilon = 1e-4f;
 
-}  // namespace
+} // namespace
 
 Entity::Entity(Maze& maze, Vec2 position, Direction direction, float speed)
-    : maze_(&maze),
-      position_(maze.wrapPosition(position)),
-      direction_(direction),
-      speed_(speed) {
-}
+    : maze_(&maze), position_(maze.wrapPosition(position)), direction_(direction), speed_(speed) {}
 
 void Entity::setPosition(Vec2 position) {
     if (maze_ != nullptr) {
@@ -173,4 +169,4 @@ void Entity::update(float deltaSeconds) {
     }
 }
 
-}
+} // namespace pac

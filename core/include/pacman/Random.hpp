@@ -5,14 +5,10 @@
 namespace pac {
 
 class Random {
-public:
-    explicit Random(std::uint32_t seed = 0x9e3779b9u)
-        : state_(seed == 0u ? 0x1u : seed) {
-    }
+  public:
+    explicit Random(std::uint32_t seed = 0x9e3779b9u) : state_(seed == 0u ? 0x1u : seed) {}
 
-    void seed(std::uint32_t value) {
-        state_ = value == 0u ? 0x1u : value;
-    }
+    void seed(std::uint32_t value) { state_ = value == 0u ? 0x1u : value; }
 
     std::uint32_t next() {
         state_ ^= state_ << 13;
@@ -21,9 +17,7 @@ public:
         return state_;
     }
 
-    float unit() {
-        return static_cast<float>(next() >> 8) / static_cast<float>(1u << 24);
-    }
+    float unit() { return static_cast<float>(next() >> 8) / static_cast<float>(1u << 24); }
 
     int range(int lowInclusive, int highInclusive) {
         if (highInclusive <= lowInclusive) {
@@ -33,8 +27,8 @@ public:
         return lowInclusive + static_cast<int>(next() % span);
     }
 
-private:
+  private:
     std::uint32_t state_;
 };
 
-}
+} // namespace pac

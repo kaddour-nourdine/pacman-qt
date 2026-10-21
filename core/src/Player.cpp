@@ -5,10 +5,8 @@
 namespace pac {
 
 Player::Player(Maze& maze)
-    : Entity(maze,
-             tileCenterOf(maze.level().playerX(), maze.level().playerY()),
-             maze.level().playerDirection(),
-             maze.level().config().playerSpeed) {
+    : Entity(maze, tileCenterOf(maze.level().playerX(), maze.level().playerY()),
+             maze.level().playerDirection(), maze.level().config().playerSpeed) {
     reset();
 }
 
@@ -39,4 +37,4 @@ float Player::animationPhase() const {
     return phase < 0.0f ? phase + 1.0f : phase;
 }
 
-}
+} // namespace pac

@@ -16,10 +16,9 @@ bool fail(std::string* error, const std::string& message) {
     return false;
 }
 
-}  // namespace
+} // namespace
 
-LevelManager::LevelManager(std::vector<Level> levels) : levels_(std::move(levels)) {
-}
+LevelManager::LevelManager(std::vector<Level> levels) : levels_(std::move(levels)) {}
 
 bool LevelManager::add(Level level) {
     if (!level.isValid()) {
@@ -111,4 +110,4 @@ const std::string& LevelManager::nameFor(int levelNumber) const {
     return levelFor(levelNumber).name();
 }
 
-}
+} // namespace pac

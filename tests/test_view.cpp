@@ -37,11 +37,11 @@ void clickItem(QQuickWindow* window, QQuickItem* item) {
     QTest::qWait(50);
 }
 
-}  // namespace
+} // namespace
 
 class ViewTest : public QObject {
     Q_OBJECT
-private slots:
+  private slots:
     void initTestCase() {
         // Keep materializeBundledLevels() out of the real app data directory.
         QStandardPaths::setTestModeEnabled(true);
@@ -249,8 +249,7 @@ private slots:
         const double slowStart = controller.playerX();
         QTest::qWait(120);
         const double slowDistance = std::abs(controller.playerX() - slowStart);
-        QVERIFY2(slowDistance < normalDistance,
-                 "slow mode did not slow the model down");
+        QVERIFY2(slowDistance < normalDistance, "slow mode did not slow the model down");
         controller.settings()->setSlowMode(false);
     }
 

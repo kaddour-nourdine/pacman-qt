@@ -2,8 +2,7 @@
 
 namespace pac {
 
-Engine::Engine(Game& game) : game_(game) {
-}
+Engine::Engine(Game& game) : game_(game) {}
 
 void Engine::setTimeScale(double timeScale) {
     timeScale_ = timeScale < 0.0 ? 0.0 : timeScale;
@@ -36,4 +35,4 @@ int Engine::update(double frameSeconds) {
     return steps;
 }
 
-}
+} // namespace pac

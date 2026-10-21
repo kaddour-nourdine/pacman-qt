@@ -10,7 +10,7 @@
 namespace pac {
 
 class Maze {
-public:
+  public:
     explicit Maze(Level level);
 
     int cols() const { return cols_; }
@@ -42,7 +42,7 @@ public:
 
     const Level& level() const { return level_; }
 
-private:
+  private:
     Tile rawTile(int x, int y) const;
 
     Level level_;
@@ -56,4 +56,4 @@ private:
     int fruitsTotal_ = 0;
 };
 
-}
+} // namespace pac

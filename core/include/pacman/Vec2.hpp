@@ -65,4 +65,4 @@ constexpr int tileIndexOf(float value) {
     return static_cast<int>(std::floor(value));
 }
 
-}
+} // namespace pac

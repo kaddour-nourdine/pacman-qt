@@ -20,7 +20,7 @@ Maze junction() {
     return Maze(pactest::makeLevel(pactest::junctionMap(), __FILE__, __LINE__));
 }
 
-}  // namespace
+} // namespace
 
 PAC_TEST(Ghost, spawnsAtLevelPosition) {
     Maze maze = layout();

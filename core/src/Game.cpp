@@ -25,9 +25,7 @@ const char* toString(GlobalMode mode) {
 }
 
 ModeSchedule::ModeSchedule()
-    : durations_{7.0f, 20.0f, 7.0f, 20.0f, 5.0f, 20.0f, 5.0f, 20.0f},
-      custom_(false) {
-}
+    : durations_{7.0f, 20.0f, 7.0f, 20.0f, 5.0f, 20.0f, 5.0f, 20.0f}, custom_(false) {}
 
 ModeSchedule::ModeSchedule(std::vector<float> phaseDurations) : custom_(false) {
     if (phaseDurations.empty()) {
@@ -63,16 +61,11 @@ int ModeSchedule::phaseCount() const {
     return static_cast<int>(durations_.size());
 }
 
-Game::Game(Level level) : Game(LevelManager(std::vector<Level>{std::move(level)})) {
-}
+Game::Game(Level level) : Game(LevelManager(std::vector<Level>{std::move(level)})) {}
 
 Game::Game(LevelManager levels)
-    : levels_(std::move(levels)),
-      level_(levels_.levelFor(1)),
-      maze_(level_),
-      player_(maze_),
-      schedule_(level_.config().phaseDurations),
-      lives_(level_.config().startingLives) {
+    : levels_(std::move(levels)), level_(levels_.levelFor(1)), maze_(level_), player_(maze_),
+      schedule_(level_.config().phaseDurations), lives_(level_.config().startingLives) {
     createGhosts();
     beginLevel();
 }
@@ -82,7 +75,8 @@ void Game::createGhosts() {
     ghosts_.reserve(Level::kGhostCount);
     for (int i = 0; i < Level::kGhostCount; ++i) {
         const GhostSpawn& spawn = level_.ghostSpawn(i);
-        ghosts_.emplace_back(maze_, static_cast<GhostId>(i), spawn.x, spawn.y, spawn.direction, &random_);
+        ghosts_.emplace_back(maze_, static_cast<GhostId>(i), spawn.x, spawn.y, spawn.direction,
+                             &random_);
     }
 }
 
@@ -314,7 +308,8 @@ void Game::collectPellet() {
 
     const bool powerPellet = isPowerPellet(taken);
     const bool isFruitTaken = isFruit(taken);
-    const int points = powerPellet ? kPowerPelletPoints : (isFruitTaken ? kFruitPoints : kPelletPoints);
+    const int points =
+        powerPellet ? kPowerPelletPoints : (isFruitTaken ? kFruitPoints : kPelletPoints);
     score_ += points;
     if (score_ >= nextLifeScore_) {
         ++lives_;
@@ -429,4 +424,4 @@ std::vector<Event> Game::drainEvents() {
     return drained;
 }
 
-}
+} // namespace pac

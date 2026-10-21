@@ -29,7 +29,7 @@ const char* toString(GameState state);
 const char* toString(GlobalMode mode);
 
 class ModeSchedule {
-public:
+  public:
     ModeSchedule();
     explicit ModeSchedule(std::vector<float> phaseDurations);
 
@@ -38,13 +38,13 @@ public:
     int phaseCount() const;
     bool usesCustomSchedule() const { return custom_; }
 
-private:
+  private:
     std::vector<float> durations_;
     bool custom_ = false;
 };
 
 class Game {
-public:
+  public:
     static constexpr int kPelletPoints = 10;
     static constexpr int kPowerPelletPoints = 50;
     static constexpr int kFruitPoints = 100;
@@ -74,7 +74,9 @@ public:
     GlobalMode globalMode() const { return globalMode_; }
     float frightenedSecondsLeft() const { return frightenedSecondsLeft_; }
     bool isFrightened() const { return frightenedSecondsLeft_ > 0.0f; }
-    bool frightenedFlash() const { return frightenedSecondsLeft_ > 0.0f && frightenedSecondsLeft_ <= 2.0f; }
+    bool frightenedFlash() const {
+        return frightenedSecondsLeft_ > 0.0f && frightenedSecondsLeft_ <= 2.0f;
+    }
     int pelletsRemaining() const { return maze_.pelletsRemaining(); }
 
     const Maze& maze() const { return maze_; }
@@ -87,7 +89,7 @@ public:
 
     std::vector<Event> drainEvents();
 
-private:
+  private:
     void createGhosts();
     void loadLevel(const Level& level);
     void beginLevel();
@@ -125,4 +127,4 @@ private:
     std::vector<Event> events_;
 };
 
-}
+} // namespace pac

@@ -71,7 +71,8 @@ constexpr bool isGhostMarker(char c) {
 }
 
 constexpr bool isMapChar(char c) {
-    return c == ' ' || c == '#' || c == '.' || c == 'o' || c == '-' || c == '_' || c == 'P' || c == 'F' || c == 'f' || isGhostMarker(c);
+    return c == ' ' || c == '#' || c == '.' || c == 'o' || c == '-' || c == '_' || c == 'P' ||
+           c == 'F' || c == 'f' || isGhostMarker(c);
 }
 
 constexpr Tile charToTile(char c) {
@@ -95,4 +96,4 @@ constexpr Tile charToTile(char c) {
     return Tile::Empty;
 }
 
-}
+} // namespace pac

@@ -7,7 +7,7 @@
 namespace pac {
 
 class Engine {
-public:
+  public:
     static constexpr double kStepSeconds = 1.0 / 120.0;
 
     explicit Engine(Game& game);
@@ -22,7 +22,7 @@ public:
     double simulatedSeconds() const { return simulatedSeconds_; }
     std::uint64_t stepCount() const { return stepCount_; }
 
-private:
+  private:
     Game& game_;
     double accumulator_ = 0.0;
     double timeScale_ = 1.0;
@@ -31,4 +31,4 @@ private:
     std::uint64_t stepCount_ = 0;
 };
 
-}
+} // namespace pac

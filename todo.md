@@ -44,7 +44,7 @@ cmake -S . -B build -DPACMAN_BUILD_APP=ON -DPACMAN_BUILD_QT_TESTS=ON && cmake --
 ## Open items
 
 ### Housekeeping
-- [ ] **Code style** (S): decide on a style and add a `.clang-format`, run it over `core/` and `tests/` in one formatting commit. *Done when:* `clang-format --dry-run -Werror` is clean.
+- [x] **Code style** (S): added `.clang-format` (LLVM-based, 4-space, 100-col, Attach braces, left-aligned pointers) and applied it to `core/` and `tests/`. *Done when:* `clang-format --dry-run -Werror` is clean.
 
 ### Android polish
 - [ ] **Release signing** (S): replace the shared debug keystore with a real key.
@@ -76,6 +76,6 @@ cmake -S . -B build -DPACMAN_BUILD_APP=ON -DPACMAN_BUILD_QT_TESTS=ON && cmake --
 
 ## If you only have an hour
 
-1. Code style: add `.clang-format` and run it over `core/` + `tests/` (Phase 0).
-2. Extra audio effects: add ghost-eaten and death sounds (minor polish).
-3. Release signing: create a real key and document the flow.
+1. Extra audio effects: add ghost-eaten and death sounds (minor polish).
+2. Release signing: create a real key and document the flow.
+3. Desktop display check: run the Qt app on a real display.

@@ -7,7 +7,7 @@
 namespace pac {
 
 class Entity {
-public:
+  public:
     Entity(Maze& maze, Vec2 position, Direction direction, float speed);
 
     virtual ~Entity() = default;
@@ -42,7 +42,7 @@ public:
 
     void update(float deltaSeconds);
 
-protected:
+  protected:
     virtual void onArriveAtCenter() {}
     virtual Direction chooseDirection() const;
     virtual bool canPassDoors() const { return false; }
@@ -59,4 +59,4 @@ protected:
     float distanceTravelled_ = 0.0f;
 };
 
-}
+} // namespace pac

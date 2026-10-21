@@ -14,13 +14,8 @@
 
 int main() {
     const std::vector<std::string> lines = {
-        "name = Consumer",
-        "playerSpeed = 6.0",
-        "",
-        "#########",
-        "#...P...#",
-        "#.......#",
-        "#########",
+        "name = Consumer", "playerSpeed = 6.0", "",          "#########",
+        "#...P...#",       "#.......#",         "#########",
     };
 
     pac::Level level;

@@ -24,7 +24,7 @@ const char* toString(GhostId id);
 const char* toString(GhostMode mode);
 
 class Ghost : public Entity {
-public:
+  public:
     Ghost(Maze& maze, GhostId id, int spawnX, int spawnY, Direction spawnDirection, Random* random);
 
     void reset();
@@ -53,12 +53,12 @@ public:
     int spawnX() const { return spawnX_; }
     int spawnY() const { return spawnY_; }
 
-protected:
+  protected:
     void onArriveAtCenter() override;
     Direction chooseDirection() const override;
     bool canPassDoors() const override { return true; }
 
-private:
+  private:
     Vec2 chaseTarget(Vec2 playerPosition, Direction playerDirection, Vec2 blinkyPosition) const;
     Direction frightenedDirection() const;
     bool forbidUpwardTurn() const;
@@ -76,4 +76,4 @@ private:
     float frightenedTimeLeft_ = 0.0f;
 };
 
-}
+} // namespace pac
