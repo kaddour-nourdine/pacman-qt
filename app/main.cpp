@@ -10,7 +10,9 @@
 
 #include <atomic>
 
+#include "AndroidBridge.hpp"
 #include "GameController.hpp"
+#include "ScreenInsets.hpp"
 #include "SfxPlayer.hpp"
 
 int main(int argc, char** argv) {
@@ -21,10 +23,20 @@ int main(int argc, char** argv) {
 
     GameController controller;
     SfxPlayer sfx;
+    ScreenInsets insets;
+    AndroidBridge android;
+
+    // One switch, two places: the persistent setting lives in the settings
+    // object, the mixer only obeys it.
+    QObject::connect(controller.settings(), &AppSettings::soundEnabledChanged, &sfx,
+                     [&sfx, &controller] { sfx.setEnabled(controller.settings()->soundEnabled()); });
+    sfx.setEnabled(controller.settings()->soundEnabled());
 
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("game"), &controller);
     engine.rootContext()->setContextProperty(QStringLiteral("sfx"), &sfx);
+    engine.rootContext()->setContextProperty(QStringLiteral("insets"), &insets);
+    engine.rootContext()->setContextProperty(QStringLiteral("android"), &android);
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app,
                      [](const QUrl& object) {
                          qWarning() << "pacman: failed to create QML root object" << object;
@@ -43,11 +55,16 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    // Render-thread cadence probe (diagnostic, part of the frame-gap
-    // investigation): fires on the scene-graph thread, so it sees whether
-    // that thread keeps rendering while the UI timer stalls. Atomic because
-    // it runs on the render thread; only logs when frames stop for >40 ms.
     if (auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst())) {
+        // The safe area (notch, rounded corners, system bars) is a property
+        // of the window; the QML side needs it to keep the HUD readable.
+        insets.attach(window);
+
+        // Render-thread cadence probe (diagnostic, part of the frame-gap
+        // investigation): fires on the scene-graph thread, so it sees whether
+        // that thread keeps rendering while the UI timer stalls. Atomic
+        // because it runs on the render thread; only logs when frames stop
+        // for >40 ms.
         static std::atomic<qint64> lastRenderMs{0};
         QObject::connect(window, &QQuickWindow::afterRendering, &app, [] {
             const qint64 now = QDateTime::currentMSecsSinceEpoch();

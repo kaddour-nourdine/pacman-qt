@@ -6,8 +6,14 @@ qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
 
 qt_add_library(pacman_view STATIC
+    AndroidBridge.cpp
+    AndroidBridge.hpp
+    AppSettings.cpp
+    AppSettings.hpp
     GameController.cpp
     GameController.hpp
+    ScreenInsets.cpp
+    ScreenInsets.hpp
     SfxPlayer.cpp
     SfxPlayer.hpp
 )
@@ -16,6 +22,9 @@ qt_add_qml_module(pacman_view
     URI PacMan
     VERSION 1.0
     NO_PLUGIN
+    # The generated files have to end in the target path, otherwise the
+    # tooling (qmllint) does not find the module.
+    OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/PacMan"
     QML_FILES
         Main.qml
 )

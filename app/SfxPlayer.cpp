@@ -304,6 +304,9 @@ SfxPlayer::~SfxPlayer() {
 }
 
 void SfxPlayer::trigger(const QVector<float>& samples, int sampleRate) {
+    if (!m_enabled) {
+        return;
+    }
     // Tripwire: must never print — triggering is a mutex + a few writes.
     QElapsedTimer timer;
     timer.start();
@@ -337,6 +340,10 @@ void SfxPlayer::logStatus(const char* reason) {
     qInfo() << "pacman-audio:" << reason << "triggers" << triggers << "sink"
             << static_cast<int>(m_sink->state()) << "error" << static_cast<int>(m_sink->error())
             << "frames" << frames << "seconds" << seconds << "peak" << peak;
+}
+
+void SfxPlayer::setEnabled(bool enabled) {
+    m_enabled = enabled;
 }
 
 void SfxPlayer::playMunch() {
