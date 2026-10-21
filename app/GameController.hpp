@@ -119,11 +119,6 @@ private:
     QTimer timer_;
     QElapsedTimer frameClock_;
 
-    // Hitch detector state (see tick()).
-    QElapsedTimer perfPrevious_;
-    QElapsedTimer perfClock_;
-    qint64 perfPreviousCpuMs_ = -1;
-
     pac::Vec2 previousPlayer_;
     std::vector<pac::Vec2> previousGhosts_;
 
