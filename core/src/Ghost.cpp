@@ -235,9 +235,12 @@ Direction Ghost::chooseDirection() const {
 }
 
 bool Ghost::forbidUpwardTurn() const {
-    const int tx = tileX();
-    const int ty = tileY();
-    return ty == 5 && tx >= 8 && tx <= 11;
+    // The corner-turn restriction was tuned for an older level1 layout in
+    // which row 5 was the row above the ghost house. In the current classic
+    // maze the house top is row 9, so the restriction only affected an open
+    // corridor and made ghosts (Blinky in particular) reverse course and
+    // bounce back into the house instead of turning up. It is disabled.
+    return false;
 }
 
 } // namespace pac

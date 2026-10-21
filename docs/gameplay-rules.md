@@ -191,11 +191,11 @@ fidelity work remains:
    usable during play. Eyes deliberately do the opposite (they need the door).
 3. **Fruit / bonus items**: fruit tiles exist (`Tile::Fruit`, `charToTile` accepts `F`/`f`) and `Maze` counts/collects them; `Game::collectPellet` collects fruit and emits `FruitEaten` with `kFruitPoints = 100`. **No timed fruit spawn logic is implemented yet.** No inter-level cut-scenes.
 4. **Frightened warning flash** is available via predicates (`Game::frightenedFlash()`, `Ghost::isFrightenedFlashing()`); ghost behavior/visuals can use these.
-5. **Corner turn restriction** prevents upward turns on row 5, columns 8-11
-   (`Ghost::forbidUpwardTurn`); this is hardcoded for now and not data-driven. It was tuned for
-   the *previous* `level1` layout, where row 5 was the row above the ghost house; in the classic
-   maze (current `level1.txt`) the house top is row 9, so the restriction only affects an open
-   corridor and is a candidate for removal or making data-driven.
+5. **Corner turn restriction** (`Ghost::forbidUpwardTurn`) is **disabled** — it was tuned for
+   an older `level1` layout in which row 5 was the row above the ghost house; in the current
+   classic maze the house top is row 9, so the restriction only affected an open corridor and
+   made ghosts (Blinky in particular) reverse course and bounce back into the house. The
+   function is retained (returns `false`) so callers and the public API stay stable.
 6. **Frightened time does not stop while the player is dead** or while a level transition
    pause is running.
 7. **The eaten-ghost score does not include the current power pellet bonus**, and the ghost
