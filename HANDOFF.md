@@ -1,5 +1,8 @@
 # HANDOFF — current state
 
+**Project status: feature-complete and ready for external review** (pending newly
+discovered bugs).
+
 Short snapshot of the project state for the next session. `todo.md` holds the plan
 and open items; `docs/` holds the explanations; this file holds only the state and
 the constraints.

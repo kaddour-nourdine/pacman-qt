@@ -18,6 +18,8 @@ The project follows a **model / view split**:
 
 ## Status
 
+**Project status: feature-complete and ready for external review** (pending newly discovered bugs).
+
 | Part | State |
 | --- | --- |
 | Simulation model (maze, player, ghosts, rules, level list, clock) | Done, 139 tests passing |
