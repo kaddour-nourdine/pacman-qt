@@ -34,6 +34,16 @@ if(TARGET pacman_fuzz)
     add_test(NAME LevelFuzz COMMAND pacman_fuzz --iterations 20000 --seed 20240521)
     set_tests_properties(LevelFuzz PROPERTIES TIMEOUT 300)
 endif()
+
+# The installed package has to work: install pacman_core into a temporary
+# prefix and build a project outside this tree against it.
+add_test(NAME InstallCheck
+    COMMAND ${CMAKE_COMMAND}
+        -DBUILD_DIR=${CMAKE_BINARY_DIR}
+        -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/install_check.cmake
+)
+set_tests_properties(InstallCheck PROPERTIES TIMEOUT 300)
 add_executable(pacman_tests_reach TestReachability.cpp TestMain.cpp)
 target_link_libraries(pacman_tests_reach PRIVATE pacman_core)
 target_include_directories(pacman_tests_reach PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

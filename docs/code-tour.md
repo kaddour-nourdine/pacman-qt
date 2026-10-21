@@ -27,6 +27,17 @@ include directory, so anything linking `pacman::core` automatically sees `pacman
 a shared library or an Android `.so` must be position independent. Warnings
 `-Wall -Wextra -Wpedantic` are enabled on GCC/Clang.
 
+It also installs the library: the headers go to `include/pacman/`, the archive to `lib/`, and
+an export set plus a package configuration (`cmake/pacman_coreConfig.cmake.in` and a generated
+version file) to `lib/cmake/pacman_core/`. The installed target is `pacman::core` as well —
+`EXPORT_NAME core` plus the `pacman::` namespace — so a consumer does not have to care whether
+it found the sources or an installation:
+
+```cmake
+find_package(pacman_core REQUIRED)
+target_link_libraries(my_tool PRIVATE pacman::core)
+```
+
 ### `tests/CMakeLists.txt`
 
 Builds one executable `pacman_tests` from all `Test*.cpp` files and registers **one CTest test
@@ -36,13 +47,23 @@ definition so the tests can find `levels/level1.txt`. The optional `PACMAN_BUILD
 option (only if `PACMAN_BUILD_APP` is `ON`) builds `pacman_qttest` from `test_view.cpp` and
 registers it as the `QtView` CTest test with `QT_QPA_PLATFORM=offscreen` in its environment.
 
+Two more CTest tests live here:
+
+- `LevelFuzz` runs the parser fuzzer (`tools/pacman_fuzz`) with a fixed seed, so the fuzzing
+  happens on every `ctest` run instead of when somebody remembers it.
+- `InstallCheck` runs `tests/install_check.cmake`, a CMake script that installs `pacman_core`
+  into a temporary prefix and then configures, builds and runs `tests/install_consumer` — a
+  project outside this tree — against the installed package. Nothing else proves that the
+  export rules work: a broken export still builds the tree perfectly well.
+
 > If you add a new suite name, add it to that `foreach` list, otherwise the test will run when
 > you execute `pacman_tests` manually but CTest will never see it.
 
 ### `tools/CMakeLists.txt`
 
-Adds the two console tools: `pacman_text` (the playable terminal renderer) and `ai_demo`
-(a scripted run of the engine). Both link only `pacman_core`, so neither pulls in Qt.
+Adds the console tools: `pacman_text` (the playable terminal renderer), `ai_demo`
+(a scripted run of the engine) and `pacman_fuzz` (the parser fuzzer). All of them link only
+`pacman_core`, so none of them pulls in Qt.
 
 ### `app/CMakeLists.txt`
 
