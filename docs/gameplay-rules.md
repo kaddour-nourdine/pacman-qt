@@ -185,7 +185,7 @@ on a tunnel tile uses `tunnelSpeed` (ghosts visibly slow down in tunnels, like t
 Worth knowing so you do not "fix" behaviour that is intentional here, and so you know what
 fidelity work remains:
 
-1. **Ghost house release timers** are simplified (pellet-based thresholds: Blinky 0, Pinky 30, Inky 60, Clyde 90). Full arcade behavior with LeavingHouse pathing is not fully modeled; ghosts use normal AI once released.
+1. **Ghost house release timers** are pellet-based (Blinky 0, Pinky 30, Inky 60, Clyde 90). Released ghosts now use `GhostMode::LeavingHouse` to exit through the door (target two tiles above spawn) before switching to normal AI; unreleased ghosts stay in the house. Full arcade exit pathing is still simplified.
 2. **Any ghost may wander into the house.** Door tiles are walkable for ghosts, and target
    selection does not forbid the house interior. In the arcade only the doorway tiles are
    usable during play. Eyes deliberately do the opposite (they need the door).

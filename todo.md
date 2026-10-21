@@ -53,7 +53,7 @@ cmake -S . -B build -DPACMAN_BUILD_APP=ON -DPACMAN_BUILD_QT_TESTS=ON && cmake --
 - [x] **Desktop display check** (S): verified the Qt app on a real desktop display (Wayland/X11) — window opens at 640×760, audio device detected, no crash.
 
 ### Model polish (documented as intentional differences)
-- [ ] **Ghost house release timers** (M): refine exit pathing / `LeavingHouse` targeting.
+- [x] **Ghost house release timers** (M): released ghosts now use `GhostMode::LeavingHouse` to exit through the door before switching to normal AI; unreleased ghosts stay in the house. (Still pellet-based thresholds: Blinky 0, Pinky 30, Inky 60, Clyde 90.)
 - [x] **Blinky bounce quirk** (S): disabled `forbidUpwardTurn()` (returns `false`); the restriction was tuned for an older layout and made Blinky reverse into the house. Determinism golden value regenerated.
 - [ ] **Pixel-accurate collision** (M, optional): currently tile-based by design.
 
