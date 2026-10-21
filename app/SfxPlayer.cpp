@@ -310,14 +310,7 @@ void SfxPlayer::trigger(const QVector<float>& samples, int sampleRate) {
     if (!m_enabled) {
         return;
     }
-    // Tripwire: must never print — triggering is a mutex + a few writes.
-    QElapsedTimer timer;
-    timer.start();
     m_mixer.trigger(samples, sampleRate);
-    const qint64 elapsed = timer.elapsed();
-    if (elapsed >= 4) {
-        qInfo() << "pacman: sfx trigger blocked" << elapsed << "ms";
-    }
 
     // Health line while the game is making noise: at most one every 10 s.
     // It answers the question the logs cannot: is the mixer actually

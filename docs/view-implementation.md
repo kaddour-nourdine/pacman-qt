@@ -196,8 +196,7 @@ A minimal Qt application entry point that:
    `game` (the controller), `sfx`, `insets` and `android` (the bridge)
 6. Connects error handlers for QML loading failures
 7. Loads `Main.qml` from the `PacMan` module
-8. Attaches the `ScreenInsets` to the root window (safe area) and hooks the
-   render-thread cadence probe
+8. Attaches the `ScreenInsets` to the root window (safe area):
 9. Returns -1 if the root object fails to create
 
 **Key Design Decision**: The controller is created **before** the QML engine, ensuring `QSettings` reads the correct organization/application names for high score persistence.

@@ -261,9 +261,10 @@ Device quirks (learned 2026-10-20 on a Tecno A059 / Android 16 / fr-BE):
   and slow mode (the model runs at 80% speed). Reachable from the pause menu.
 - `app/GameController.{hpp,cpp}`: suspend/resume handling (`setSuspended()`,
   `applyTimeScale()`), the `suspended` property and `game.settings`.
-- `app/GameController.cpp` / `app/main.cpp`: perf probes that log only on
-  anomalies (`pacman-perf: tick gap … / render-thread gap …`, plus a ≥4 ms
-  tripwire when a sound trigger blocks).
+- `app/SfxPlayer.{hpp,cpp}`: permanent audio health counters
+  (`voicesStarted` / `framesWritten` / `peak`) make the audio path observable;
+  the frame-pacing perf probes were removed once the audio investigation
+  closed.
 - Root `CMakeLists.txt`: `if(ANDROID)` block adds `-DANDROID` and warning
   suppressions for Clang.
 
@@ -281,10 +282,6 @@ adb logcat -d | grep -aE "pacman|sfx"  # dump after a round
 #   pacman-audio: device "…" rate … state … audio device + sink opened at startup
 #   pacman-audio: playing triggers N sink 0 error 0 frames F seconds S peak P
 #                                          audio health line (every 10 s while playing)
-#   pacman-perf: tick gap N ms; work …      UI-thread stall (should stay rare/absent)
-#   pacman-perf: render-thread gap N ms     scene-graph stall
-#   pacman: sfx trigger blocked N ms        sound trigger blocked on the UI thread
-#                                          (must never print with the mixer)
 ```
 
 ## Troubleshooting

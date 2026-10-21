@@ -11,27 +11,7 @@
 #include <cmath>
 #include <string>
 
-#if defined(Q_OS_ANDROID) || defined(Q_OS_LINUX)
-#include <sys/resource.h>
-#endif
-
 namespace {
-
-// Consumed CPU of the calling thread — distinguishes "UI thread was asleep
-// during a tick gap" (≈0) from "busy with invisible work" (≈ gap size).
-qint64 threadCpuMs() {
-#if defined(Q_OS_ANDROID) || defined(Q_OS_LINUX)
-    struct rusage ru {};
-    if (::getrusage(RUSAGE_THREAD, &ru) != 0) {
-        return -1;
-    }
-    return (static_cast<qint64>(ru.ru_utime.tv_sec) + ru.ru_stime.tv_sec) * 1000 +
-           (ru.ru_utime.tv_usec + ru.ru_stime.tv_usec) / 1000;
-#else
-    return -1;
-#endif
-}
-
 
 pac::LevelManager loadLevels() {
     pac::LevelManager levels;
@@ -216,37 +196,15 @@ QVariantList GameController::ghosts() const {
 }
 
 void GameController::tick() {
-    // Hitch detector: logs only when a tick was delayed (>40 ms since the
-    // previous one) or does abnormally heavy work (>8 ms), naming the phase
-    // responsible. On by design — the lines only appear when something is
-    // actually wrong.
-    const qint64 gapMs = perfPrevious_.isValid() ? perfPrevious_.elapsed() : 0;
-    const qint64 cpuNowMs = threadCpuMs();
-    const qint64 gapCpuMs =
-        (perfPreviousCpuMs_ >= 0 && cpuNowMs >= 0) ? cpuNowMs - perfPreviousCpuMs_ : -1;
-    perfPreviousCpuMs_ = cpuNowMs;
-    perfPrevious_.restart();
-    perfClock_.restart();
-
     capturePositions();
     const double frameSeconds = static_cast<double>(frameClock_.nsecsElapsed()) * 1e-9;
     frameClock_.restart();
     engine_.update(frameSeconds);
-    const qint64 updateMs = perfClock_.elapsed();
     drainModelEvents();
-    const qint64 drainMs = perfClock_.elapsed() - updateMs;
     syncMaze();
     syncStats();
-    const qint64 syncMs = perfClock_.elapsed() - updateMs - drainMs;
     syncState();
     emit actorsChanged();
-    const qint64 totalMs = perfClock_.elapsed();
-
-    if (gapMs >= 40 || totalMs >= 8) {
-        qInfo() << "pacman-perf: tick gap" << gapMs << "ms; work" << totalMs
-                << "ms (update" << updateMs << "drain" << drainMs << "sync" << syncMs
-                << "; ui-cpu" << gapCpuMs << "ms)";
-    }
 }
 
 void GameController::drainModelEvents() {
@@ -430,9 +388,6 @@ void GameController::setSuspended(bool suspended) {
         frameClock_.restart();
         timer_.start();
     }
-    // The hitch detector must not report the pause as a stall.
-    perfPrevious_.restart();
-    perfPreviousCpuMs_ = -1;
     applyTimeScale();
     emit suspendedChanged();
 }
