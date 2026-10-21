@@ -118,7 +118,7 @@ desktop, and none of them touch `core/`:
 | `app/AppSettings.{hpp,cpp}` | Persistent user settings (`QSettings`): sound on/off, slow mode. Owned by `GameController`, exposed to QML as `game.settings`. |
 | `app/ScreenInsets.{hpp,cpp}` | Follows `QWindow::safeAreaMargins()` (Qt 6.9+, guarded by a `QT_VERSION` check) and publishes it as `insets` for the QML layout. |
 | `app/AndroidBridge.{hpp,cpp}` | Receives the back press from the Java activity through JNI and re-emits it as a Qt signal. A no-op on the desktop. |
-| `android/package/src/org/pacman/qt/MainActivity.java` | The activity: landscape orientation, immersive mode, back-button interception. |
+| `android/package/src/org/pacman/qt/MainActivity.java` | The activity: free orientation, immersive mode, back-button interception. |
 
 ---
 
@@ -811,9 +811,9 @@ These are documented limitations of the Phase 4 implementation:
 4. **Sprite Sheet**: The planned packed sprite sheet was cancelled in favor of vector rendering.
 5. **Touch Input**: Implemented in Phase 5 (swipe to turn, tap to start) and verified on a phone.
 6. **Fullscreen**: The desktop window is fixed at 640×760; only the Android build is full-screen (immersive mode).
-7. **Android on-device checks**: The back button, the immersive mode, the orientation lock and the
-   suspend/resume behaviour are implemented and covered by the headless tests, but the last
-   on-device verification happened before they existed — a phone pass is still worth doing.
+7. **Android on-device checks**: The back button, the immersive mode, the (now removed)
+   orientation lock and the suspend/resume behaviour are implemented, covered by the
+   headless tests and verified on a device.
 
 ---
 
