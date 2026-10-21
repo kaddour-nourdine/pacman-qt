@@ -18,9 +18,42 @@ Window {
     // kept from the on-device audio investigation, see SfxPlayer.
     property real lastFrameAt: 0
 
+    // The pause menu (the "back" menu on a phone). It pauses the game while
+    // it is open and restores the previous state when it closes.
+    property bool menuOpen: false
+    property bool menuPausedTheGame: false
+
+    function openMenu() {
+        if (menuOpen) {
+            return
+        }
+        menuOpen = true
+        if (game.stateName === "running" && !game.paused) {
+            game.togglePause()
+            menuPausedTheGame = true
+        }
+    }
+
+    function closeMenu() {
+        if (!menuOpen) {
+            return
+        }
+        menuOpen = false
+        if (menuPausedTheGame) {
+            game.togglePause()
+            menuPausedTheGame = false
+        }
+    }
+
     Column {
         id: rootColumn
         anchors.fill: parent
+        // Keep the HUD and the board clear of notches, rounded corners and
+        // system bars (Android reports the safe area; elsewhere it is empty).
+        anchors.leftMargin: insets.left
+        anchors.rightMargin: insets.right
+        anchors.topMargin: insets.top
+        anchors.bottomMargin: insets.bottom
         spacing: 0
         focus: true
 
@@ -83,7 +116,7 @@ Window {
                 anchors.right: parent.right
                 anchors.rightMargin: 16
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 6
+                spacing: 10
 
                 Repeater {
                     model: Math.max(game.lives, 0)
@@ -92,6 +125,32 @@ Window {
                         width: 20
                         height: 20
                         fillMode: Image.PreserveAspectFit
+                    }
+                }
+
+                // The menu button: on a phone there is no keyboard, so the
+                // pause menu has to be reachable by touch.
+                Rectangle {
+                    id: menuButton
+                    width: 34
+                    height: 28
+                    radius: 4
+                    color: "#101010"
+                    border.color: "#ffff00"
+                    border.width: 1
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "≡"
+                        color: "#ffff00"
+                        font.pixelSize: 18
+                        font.bold: true
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: root.menuOpen ? root.closeMenu() : root.openMenu()
                     }
                 }
             }
@@ -134,7 +193,7 @@ Window {
                     case 1: base = 1.5 * Math.PI; break
                     case 2: base = 0; break
                     case 3: base = 0.5 * Math.PI; break
-                    case 4: base = Math.PI; break
+                    case 4: base = Math.PI; break;
                     }
                     const mouth = Math.abs(Math.sin(game.playerMouth * Math.PI * 2)) * 30 * Math.PI / 180
                     ctx.fillStyle = game.stateName === "died" ? "#ff0000" : "#ffff00"
@@ -267,7 +326,7 @@ Window {
 
             Text {
                 anchors.centerIn: board
-                visible: game.paused
+                visible: game.paused && !root.menuOpen
                 text: "PAUSED"
                 color: "#ffffff"
                 font.pixelSize: Math.max(root.cell, 14)
@@ -414,16 +473,113 @@ Window {
             game.start()
             break
         case Qt.Key_P:
-        case Qt.Key_Escape:
             game.togglePause()
+            break
+        case Qt.Key_M:
+            game.settings.toggleSound()
             break
         case Qt.Key_R:
             game.reset()
+            break
+        case Qt.Key_Escape:
+        // The Android back button arrives as Qt.Key_Back; both open the
+        // pause menu instead of leaving the game.
+        case Qt.Key_Back:
+            root.menuOpen ? root.closeMenu() : root.openMenu()
             break
         default:
             return
         }
         event.accepted = true
+        }
+    }
+
+    // The Android activity forwards the back button here (Android swallows
+    // it before it reaches the Qt window), so the phone gets the same pause
+    // menu as the Escape key.
+    Connections {
+        target: android
+        function onBackPressed() {
+            root.menuOpen ? root.closeMenu() : root.openMenu()
+        }
+    }
+
+    // The pause menu. It lives outside the column so that it covers the
+    // whole window, and it swallows touches so that a tap on the menu does
+    // not steer Pac-Man.
+    Rectangle {
+        id: menu
+        anchors.fill: parent
+        color: "#cc000000"
+        visible: root.menuOpen
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {}      // swallow: no steering while the menu is open
+        }
+
+        Column {
+            anchors.centerIn: parent
+            spacing: 14
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "PAUSED"
+                color: "#ffff00"
+                font.pixelSize: 28
+                font.bold: true
+            }
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: game.settings.soundEnabled ? "SOUND: ON" : "SOUND: OFF"
+                color: "#ffffff"
+                font.pixelSize: 18
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: game.settings.toggleSound()
+                }
+            }
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: game.settings.slowMode ? "SPEED: SLOW" : "SPEED: NORMAL"
+                color: "#ffffff"
+                font.pixelSize: 18
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: game.settings.toggleSlowMode()
+                }
+            }
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "RESUME"
+                color: "#00ffff"
+                font.pixelSize: 18
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: root.closeMenu()
+                }
+            }
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "RESTART"
+                color: "#ff8080"
+                font.pixelSize: 18
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        root.closeMenu()
+                        game.reset()
+                    }
+                }
+            }
         }
     }
 }

@@ -93,6 +93,11 @@ public:
     Q_INVOKABLE void playMunch();
     Q_INVOKABLE void playPower();
 
+    // Mute switch. The mixer keeps running (the sink stays open, so
+    // un-muting is instant), but no voice is started while disabled.
+    void setEnabled(bool enabled);
+    bool enabled() const { return m_enabled; }
+
     // Health of the audio path, for the tests and the on-device log:
     // voicesStarted() counts the sounds that were queued, framesWritten()
     // counts the frames that actually left the mixer, peak() is the loudest
@@ -115,4 +120,5 @@ private:
     QAudioFormat m_format;
     QString m_deviceName;
     qint64 m_lastStatusMs = 0;
+    bool m_enabled = true;
 };

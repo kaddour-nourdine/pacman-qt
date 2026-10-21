@@ -37,7 +37,10 @@ endif()
 
 option(PACMAN_BUILD_QT_TESTS "Build Qt view tests" OFF)
 if(PACMAN_BUILD_QT_TESTS AND PACMAN_BUILD_APP)
-    find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Test)
+    # Multimedia is needed here as well: pacman_view (and therefore the
+    # test binary) links against it, and CMake wants the component to be
+    # visible in this scope.
+    find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Test Multimedia)
     qt_add_executable(pacman_qttest
         test_view.cpp
     )

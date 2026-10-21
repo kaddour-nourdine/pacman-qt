@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QDir>
 #include <QFile>
+#include <QGuiApplication>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QVariantMap>
@@ -113,6 +114,20 @@ GameController::GameController(QObject* parent)
     timer_.setInterval(16);
     timer_.start();
 
+    // Slow mode scales the model, not the frame rate: the simulation stays
+    // deterministic, it just advances with fewer steps per second.
+    connect(&settings_, &AppSettings::slowModeChanged, this, [this] {
+        applyTimeScale();
+    });
+
+    // Android sends ApplicationSuspended when the activity goes to the
+    // background (and ApplicationActive when it comes back). Freezing the
+    // model there keeps the game from running on while nobody looks at it.
+    if (auto* guiApp = qobject_cast<QGuiApplication*>(QCoreApplication::instance())) {
+        connect(guiApp, &QGuiApplication::applicationStateChanged, this,
+                &GameController::onApplicationStateChanged);
+    }
+
     syncMaze();
     syncStats();
     syncState();
@@ -204,30 +219,28 @@ void GameController::tick() {
     // Hitch detector: logs only when a tick was delayed (>40 ms since the
     // previous one) or does abnormally heavy work (>8 ms), naming the phase
     // responsible. On by design — the lines only appear when something is
-    // actually wrong. Statics: diagnostics assume the usual single instance.
-    static QElapsedTimer previous;
-    static QElapsedTimer perf;
-    static qint64 previousCpuMs = -1;
-    const qint64 gapMs = previous.isValid() ? previous.elapsed() : 0;
+    // actually wrong.
+    const qint64 gapMs = perfPrevious_.isValid() ? perfPrevious_.elapsed() : 0;
     const qint64 cpuNowMs = threadCpuMs();
-    const qint64 gapCpuMs = (previousCpuMs >= 0 && cpuNowMs >= 0) ? cpuNowMs - previousCpuMs : -1;
-    previousCpuMs = cpuNowMs;
-    previous.restart();
-    perf.restart();
+    const qint64 gapCpuMs =
+        (perfPreviousCpuMs_ >= 0 && cpuNowMs >= 0) ? cpuNowMs - perfPreviousCpuMs_ : -1;
+    perfPreviousCpuMs_ = cpuNowMs;
+    perfPrevious_.restart();
+    perfClock_.restart();
 
     capturePositions();
     const double frameSeconds = static_cast<double>(frameClock_.nsecsElapsed()) * 1e-9;
     frameClock_.restart();
     engine_.update(frameSeconds);
-    const qint64 updateMs = perf.elapsed();
+    const qint64 updateMs = perfClock_.elapsed();
     drainModelEvents();
-    const qint64 drainMs = perf.elapsed() - updateMs;
+    const qint64 drainMs = perfClock_.elapsed() - updateMs;
     syncMaze();
     syncStats();
-    const qint64 syncMs = perf.elapsed() - updateMs - drainMs;
+    const qint64 syncMs = perfClock_.elapsed() - updateMs - drainMs;
     syncState();
     emit actorsChanged();
-    const qint64 totalMs = perf.elapsed();
+    const qint64 totalMs = perfClock_.elapsed();
 
     if (gapMs >= 40 || totalMs >= 8) {
         qInfo() << "pacman-perf: tick gap" << gapMs << "ms; work" << totalMs
@@ -398,8 +411,46 @@ void GameController::setPaused(bool paused) {
         return;
     }
     paused_ = paused;
-    engine_.setTimeScale(paused_ ? 0.0 : 1.0);
+    applyTimeScale();
     emit pausedChanged();
+}
+
+void GameController::setSuspended(bool suspended) {
+    if (suspended_ == suspended) {
+        return;
+    }
+    suspended_ = suspended;
+    if (suspended_) {
+        // Stop the clock entirely: no ticks means no work at all while the
+        // app is in the background.
+        timer_.stop();
+    } else {
+        // Restart the frame clock, so the time spent in the background is
+        // thrown away instead of arriving as one huge frame.
+        frameClock_.restart();
+        timer_.start();
+    }
+    // The hitch detector must not report the pause as a stall.
+    perfPrevious_.restart();
+    perfPreviousCpuMs_ = -1;
+    applyTimeScale();
+    emit suspendedChanged();
+}
+
+void GameController::applyTimeScale() {
+    double scale = settings_.slowMode() ? kSlowFactor : 1.0;
+    if (paused_ || suspended_) {
+        scale = 0.0;
+    }
+    engine_.setTimeScale(scale);
+}
+
+void GameController::onApplicationStateChanged(int state) {
+    // Only ApplicationSuspended means "the user cannot see the game any
+    // more" (Android backgrounding). ApplicationInactive also covers
+    // transient interruptions like a system dialog, where the game should
+    // keep running.
+    setSuspended(state == Qt::ApplicationSuspended);
 }
 
 double GameController::interpolateX(double previous, double current) const {

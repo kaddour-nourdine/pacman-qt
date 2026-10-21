@@ -8,6 +8,7 @@
 #include <QVariantList>
 #include <vector>
 
+#include "AppSettings.hpp"
 #include "pacman/Engine.hpp"
 #include "pacman/Game.hpp"
 #include "pacman/LevelManager.hpp"
@@ -33,6 +34,8 @@ class GameController : public QObject {
     Q_PROPERTY(double playerMouth READ playerMouth NOTIFY actorsChanged)
     Q_PROPERTY(int playerDirection READ playerDirection NOTIFY actorsChanged)
     Q_PROPERTY(QVariantList ghosts READ ghosts NOTIFY actorsChanged)
+    Q_PROPERTY(bool suspended READ suspended NOTIFY suspendedChanged)
+    Q_PROPERTY(AppSettings* settings READ settings CONSTANT)
 
 public:
     explicit GameController(QObject* parent = nullptr);
@@ -51,6 +54,16 @@ public:
     QString stateName() const;
     bool paused() const { return paused_; }
 
+    // True while the application is in the background (Android) or the
+    // window is not interactive: the model is frozen and the tick timer is
+    // stopped, so returning to the game does not replay the missing time.
+    bool suspended() const { return suspended_; }
+    void setSuspended(bool suspended);
+
+    // Persistent user settings (sound, slow mode). Owned by the controller
+    // so that QML can reach them as `game.settings`.
+    AppSettings* settings() { return &settings_; }
+
     QString mazeData() const { return mazeData_; }
     QString itemData() const { return itemData_; }
     int mazeCols() const { return game_.maze().cols(); }
@@ -67,6 +80,7 @@ signals:
     void highScoreChanged();
     void stateChanged();
     void pausedChanged();
+    void suspendedChanged();
     void mazeChanged();
     void itemsChanged();
     void actorsChanged();
@@ -89,15 +103,26 @@ private:
     void syncState();
     void capturePositions();
     void setPaused(bool paused);
+    void applyTimeScale();
+    void onApplicationStateChanged(int state);
     double interpolateX(double previous, double current) const;
 
     static constexpr const char* kHighScoreKey = "highScore";
+    // "Slow mode" runs the model at 80% speed: the same levels, but with
+    // more time to pick a direction on a touch screen.
+    static constexpr double kSlowFactor = 0.8;
 
     pac::LevelManager levels_;
     pac::Game game_;
     pac::Engine engine_;
+    AppSettings settings_;
     QTimer timer_;
     QElapsedTimer frameClock_;
+
+    // Hitch detector state (see tick()).
+    QElapsedTimer perfPrevious_;
+    QElapsedTimer perfClock_;
+    qint64 perfPreviousCpuMs_ = -1;
 
     pac::Vec2 previousPlayer_;
     std::vector<pac::Vec2> previousGhosts_;
@@ -112,6 +137,7 @@ private:
     int pelletsRemaining_ = -1;
     int highScore_ = 0;
     bool paused_ = false;
+    bool suspended_ = false;
 
 public:
     int directionForTest() const { return static_cast<int>(game_.player().requestedDirection()); }
