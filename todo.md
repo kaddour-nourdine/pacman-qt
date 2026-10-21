@@ -1,7 +1,9 @@
 # todo.md — next steps
 
-Roadmap for `pacman-qt`. Check items off as you finish them; add new items to the
-bottom of the relevant section.
+Roadmap for `pacman-qt`. **Project status: feature-complete and ready for external
+review** (pending newly discovered bugs).
+
+Check items off as you finish them; add new items to the bottom of the relevant section.
 
 Legend: `[ ]` open · `[x]` done · `[!]` blocked · sizes **S** (< 1 h) / **M** (half a day) / **L** (multi-day)
 
