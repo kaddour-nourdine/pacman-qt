@@ -1,5 +1,6 @@
 #include "SfxPlayer.hpp"
 
+#include <QDateTime>
 #include <QDebug>
 #include <QAudioSink>
 #include <QElapsedTimer>
@@ -8,11 +9,14 @@
 #include <QtEndian>
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 
 namespace {
 constexpr qreal kSfxGain = 0.6;  // was the SoundEffect volume
 constexpr int kBufferMs = 50;    // modest: keeps effect latency low
+constexpr int kChunkMs = 200;    // how much audio the mixer claims to have ready
+constexpr qint64 kStatusPeriodMs = 10000;  // health line cadence while playing
 }  // namespace
 
 SfxMixer::SfxMixer(QObject* parent) : QIODevice(parent) {
@@ -87,7 +91,16 @@ void SfxMixer::setFormat(const QAudioFormat& format) {
                format.sampleFormat() == QAudioFormat::UInt8);
     if (!m_ready) {
         qWarning() << "pacman: unusable audio format" << format;
+        m_availableBytes = 0;
+        return;
     }
+
+    // Claim a generous chunk of audio. The sink asks for at most this much
+    // per pull and the ring buffer caps it anyway; keeping it a whole
+    // number of frames means no partial frame is ever dropped.
+    const qint64 frameBytes = format.bytesPerFrame();
+    const qint64 chunk = format.bytesForDuration(kChunkMs * 1000);
+    m_availableBytes = frameBytes > 0 ? (chunk / frameBytes) * frameBytes : 0;
 }
 
 void SfxMixer::trigger(const QVector<float>& samples, int sampleRate) {
@@ -117,6 +130,7 @@ void SfxMixer::trigger(const QVector<float>& samples, int sampleRate) {
     chosen->samples = &samples;
     chosen->position = 0.0;
     chosen->step = static_cast<double>(sampleRate) / static_cast<double>(m_format.sampleRate());
+    m_voicesStarted.fetch_add(1, std::memory_order_relaxed);
 }
 
 qint64 SfxMixer::readData(char* data, qint64 maxSize) {
@@ -129,7 +143,7 @@ qint64 SfxMixer::readData(char* data, qint64 maxSize) {
         return 0;
     }
     if (m_scratch.size() < frames) {
-        m_scratch.resize(frames);  // audio-callback thread only: no lock needed
+        m_scratch.resize(frames);  // only the sink's thread calls readData()
     }
     std::fill(m_scratch.begin(), m_scratch.begin() + frames, 0.0f);
 
@@ -151,7 +165,7 @@ qint64 SfxMixer::readData(char* data, qint64 maxSize) {
                 const int index = static_cast<int>(position);
                 const float frac = static_cast<float>(position - index);
                 const float interpolated = clip[index] + (clip[index + 1] - clip[index]) * frac;
-                m_scratch[i] += interpolated;
+                m_scratch[i] += interpolated * static_cast<float>(kSfxGain);
                 position += voice.step;
             }
             if (done) {
@@ -161,6 +175,24 @@ qint64 SfxMixer::readData(char* data, qint64 maxSize) {
             }
         }
     }
+
+    // Two overlapping sounds (a pellet eaten while the previous munch is
+    // still ringing) can exceed full scale. Clamp once here: without it
+    // the sum would distort in Float and wrap around in Int16.
+    for (int i = 0; i < frames; ++i) {
+        m_scratch[i] = std::clamp(m_scratch[i], -1.0f, 1.0f);
+    }
+
+    // Diagnostics: how much audio left the mixer and how loud it was.
+    float peak = 0.0f;
+    for (int i = 0; i < frames; ++i) {
+        peak = std::max(peak, std::fabs(m_scratch[i]));
+    }
+    float current = m_peak.load(std::memory_order_relaxed);
+    while (peak > current &&
+           !m_peak.compare_exchange_weak(current, peak, std::memory_order_relaxed)) {
+    }
+    m_framesWritten.fetch_add(frames, std::memory_order_relaxed);
 
     auto* out = reinterpret_cast<uchar*>(data);
     const int channels = m_format.channelCount();
@@ -230,7 +262,9 @@ SfxPlayer::SfxPlayer(QObject* parent) : QObject(parent) {
         return;
     }
 
+    m_deviceName = device.description();
     const QAudioFormat format = device.preferredFormat();
+    m_format = format;
     m_mixer.setFormat(format);
     if (!m_mixer.isReady()) {
         return;
@@ -245,7 +279,22 @@ SfxPlayer::SfxPlayer(QObject* parent) : QObject(parent) {
     if (m_sink->state() == QAudio::StoppedState && m_sink->error() != QAudio::NoError) {
         qWarning() << "pacman: audio sink failed to start" << m_sink->error();
         m_sink.reset();
+        return;
     }
+
+    // The sink changing state is the one interesting failure mode (the
+    // platform can drop the output device at any time); log it whenever it
+    // is not the healthy state.
+    connect(m_sink.get(), &QAudioSink::stateChanged, this, [this](QAudio::State state) {
+        if (state != QAudio::ActiveState) {
+            logStatus("sink-state");
+        }
+    });
+
+    qInfo() << "pacman-audio: device" << m_deviceName << "rate" << m_format.sampleRate()
+            << "channels" << m_format.channelCount() << "sampleFormat"
+            << static_cast<int>(m_format.sampleFormat()) << "buffer"
+            << m_sink->bufferSize() << "state" << static_cast<int>(m_sink->state());
 }
 
 SfxPlayer::~SfxPlayer() {
@@ -263,6 +312,31 @@ void SfxPlayer::trigger(const QVector<float>& samples, int sampleRate) {
     if (elapsed >= 4) {
         qInfo() << "pacman: sfx trigger blocked" << elapsed << "ms";
     }
+
+    // Health line while the game is making noise: at most one every 10 s.
+    // It answers the question the logs cannot: is the mixer actually
+    // producing sound, or is it just not complaining?
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (now - m_lastStatusMs >= kStatusPeriodMs) {
+        m_lastStatusMs = now;
+        logStatus("playing");
+    }
+}
+
+void SfxPlayer::logStatus(const char* reason) {
+    if (!m_sink) {
+        qWarning() << "pacman-audio:" << reason << "no sink";
+        return;
+    }
+    const int triggers = m_mixer.voicesStarted();
+    const qint64 frames = m_mixer.framesWritten();
+    const float peak = m_mixer.takePeak();
+    const double seconds = m_format.sampleRate() > 0
+                                ? static_cast<double>(frames) / static_cast<double>(m_format.sampleRate())
+                                : 0.0;
+    qInfo() << "pacman-audio:" << reason << "triggers" << triggers << "sink"
+            << static_cast<int>(m_sink->state()) << "error" << static_cast<int>(m_sink->error())
+            << "frames" << frames << "seconds" << seconds << "peak" << peak;
 }
 
 void SfxPlayer::playMunch() {
