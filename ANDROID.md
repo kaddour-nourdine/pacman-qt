@@ -198,18 +198,18 @@ Device quirks (learned 2026-10-20 on a Tecno A059 / Android 16 / fr-BE):
    Fixed and **verified on hardware** — audio flows, 0 tick gaps, 0
    `sfx trigger blocked`; the health counters (`pacman-audio: playing … frames … peak …`)
    make the path observable in logcat.
-4. **Lifecycle — implemented, not yet re-verified on a device.** `GameController` listens to
+4. **Lifecycle — implemented and verified on a device.** `GameController` listens to
    `QGuiApplication::applicationStateChanged` and suspends on `Qt::ApplicationSuspended`:
    the tick timer stops, the time scale goes to 0 and the frame clock is restarted on
    resume, so no time is replayed. A desktop focus loss (`ApplicationInactive`) does *not*
    freeze the game. Covered by `ViewTest.testSuspendingFreezesTheModel`.
-5. **Orientation / safe areas / back button — implemented, not yet re-verified on a device.**
+5. **Orientation / safe areas / back button — implemented and verified on a device.**
    The app now ships its own activity (`android/package/src/org/pacman/qt/MainActivity.java`)
-   and its own manifest (`android/package/AndroidManifest.xml`): landscape-only
-   (`sensorLandscape`), immersive mode, safe-area insets from
-   `QWindow::safeAreaMargins()`, and the back button forwarded to the pause menu through
-   JNI (`app/AndroidBridge.cpp`). Covered by `ViewTest.testBackKeyOpensThePauseMenu` and
-   `ViewTest.testAndroidBackBridgeOpensThePauseMenu`.
+   and its own manifest (`android/package/AndroidManifest.xml`): free screen orientation
+   (the `sensorLandscape` lock was removed so the player can turn the phone either way),
+   immersive mode, safe-area insets from `QWindow::safeAreaMargins()`, and the back button
+   forwarded to the pause menu through JNI (`app/AndroidBridge.cpp`). Covered by
+   `ViewTest.testBackKeyOpensThePauseMenu` and `ViewTest.testAndroidBackBridgeOpensThePauseMenu`.
 6. Signing uses a shared debug keystore — create a real key for releases.
 
 ## Android-Specific Code Changes So Far
@@ -245,8 +245,9 @@ Device quirks (learned 2026-10-20 on a Tecno A059 / Android 16 / fr-BE):
   `android.app.lib_name`, the `FileProvider`) and points the launcher activity at
   `org.pacman.qt.MainActivity`.
 - `android/package/src/org/pacman/qt/MainActivity.java`: extends Qt's `QtActivity`
-  and adds the landscape lock, the immersive flags (`FLAG_KEEP_SCREEN_ON` +
-  `SYSTEM_UI_FLAG_IMMERSIVE_STICKY`) and the back-button interception.
+  and adds the immersive flags (`FLAG_KEEP_SCREEN_ON` +
+  `SYSTEM_UI_FLAG_IMMERSIVE_STICKY`) and the back-button interception (orientation
+  is left free since the `sensorLandscape` lock was removed).
 - `app/AndroidBridge.{hpp,cpp}`: the JNI side of the back button.
   `Java_org_pacman_qt_MainActivity_nativeBackPressed()` is exported by
   `libpacman_app_arm64-v8a.so` and queues `backPressed()` onto the Qt thread;

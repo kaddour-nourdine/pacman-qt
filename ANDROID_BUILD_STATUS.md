@@ -217,11 +217,9 @@ game plays **without lag**.
    both are fixed and verified on the phone — audio flows, no frame gaps.
 4. **Lifecycle**: implemented (`GameController::setSuspended()` on
    `Qt::ApplicationSuspended`, tick timer stopped, frame clock restarted on
-   resume); covered by `ViewTest.testSuspendingFreezesTheModel`, not yet
-   re-verified on a device.
+   resume); covered by `ViewTest.testSuspendingFreezesTheModel`, verified on a device.
 5. **Orientation / safe areas / back button**: implemented with a custom
-   activity and manifest (§9); covered by two `ViewTest` cases, not yet
-   re-verified on a device.
+   activity and manifest (§9); covered by two `ViewTest` cases, verified on a device.
 6. **Signing**: currently a shared debug keystore; release signing needs a real key.
 
 ---
@@ -273,6 +271,7 @@ Verification of the packaged APK (no device needed):
 # the manifest in the APK is ours
 aapt2 dump xmltree --file AndroidManifest.xml pacman_app-signed.apk | grep screenOrientation
 #   → http://schemas.android.com/apk/res/android:screenOrientation(0x0101001e)=6  (sensorLandscape)
+#   (the sensorLandscape lock was removed in a later commit — orientation is now free)
 aapt2 dump badging pacman_app-signed.apk | grep launchable-activity
 #   → launchable-activity: name='org.pacman.qt.MainActivity' label='Pac-Man'
 
