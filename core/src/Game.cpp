@@ -109,6 +109,7 @@ void Game::beginLevel() {
     }
     if (!ghosts_.empty()) {
         ghosts_.front().setReleased(true);
+        ghosts_.front().setMode(GhostMode::LeavingHouse);
     }
     scheduleSeconds_ = 0.0f;
     frightenedSecondsLeft_ = 0.0f;
@@ -197,7 +198,7 @@ void Game::applyModes() {
     globalMode_ = schedule_.modeAt(scheduleSeconds_);
     const bool frightened = frightenedSecondsLeft_ > 0.0f;
     for (Ghost& ghost : ghosts_) {
-        if (ghost.isEyes()) {
+        if (ghost.isEyes() || ghost.isLeavingHouse()) {
             continue;
         }
         if (frightened) {
@@ -244,12 +245,23 @@ void Game::moveGhosts(float deltaSeconds) {
             continue;
         }
         if (!ghost.isReleased() && !ghost.isEyes()) {
-            if (!ghost.isFrightened()) {
-                ghost.setMode(GhostMode::Scatter);
+            // Unreleased ghosts wait in the house: they do not move until
+            // releaseGhostsIfReady() frees them.
+            if (ghost.isFrightened() && frightenedSecondsLeft_ > 0.0f) {
+                ghost.setFrightenedTimeLeft(frightenedSecondsLeft_);
             }
+            continue;
+        }
+        if (ghost.isLeavingHouse()) {
             ghost.updateTarget(playerPosition, playerDirection, blinkyPosition);
             ghost.setSpeed(speedFor(ghost));
             ghost.update(deltaSeconds);
+            // Once the ghost reaches the door area (two tiles above its
+            // spawn) it has left the house: hand it over to the normal AI.
+            if (ghost.tileY() <= ghost.spawnY() - 2) {
+                ghost.setMode(globalMode_ == GlobalMode::Scatter ? GhostMode::Scatter
+                                                               : GhostMode::Chase);
+            }
             continue;
         }
         if (ghost.isFrightened() && frightenedSecondsLeft_ > 0.0f) {
@@ -289,6 +301,7 @@ void Game::releaseGhostsIfReady() {
         }
         if (shouldRelease) {
             ghost.setReleased(true);
+            ghost.setMode(GhostMode::LeavingHouse);
         }
     }
 }

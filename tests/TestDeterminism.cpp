@@ -52,7 +52,7 @@ constexpr std::uint32_t kSeed = 0x5eed1234u;
 constexpr int kSteps = 3000;
 
 // The golden digest of the replay. See the note at the top of the file.
-constexpr std::uint64_t kGoldenDigest = 0xe6547342d85a9068ull;
+constexpr std::uint64_t kGoldenDigest = 0x492a1cf90213a891ull;
 
 // The level the replay is played on.
 //
@@ -312,5 +312,6 @@ PAC_TEST(Determinism, theReplayExercisesTheGame) {
     CHECK(result.deaths > 0);
     // Scatter, chase and frightened.
     CHECK((result.distinctGhostModes & (1 << static_cast<int>(pac::GhostMode::Scatter))) != 0);
+    CHECK((result.distinctGhostModes & (1 << static_cast<int>(pac::GhostMode::Chase))) != 0);
     CHECK((result.distinctGhostModes & (1 << static_cast<int>(pac::GhostMode::Frightened))) != 0);
 }

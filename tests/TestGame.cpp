@@ -431,7 +431,7 @@ PAC_TEST(Game, playsRealLevelEndToEnd) {
 
     CHECK(game.score() > 0);
     CHECK(game.pelletsRemaining() < 178);
-    CHECK(game.ghosts()[1].tileX() != 10 || game.ghosts()[1].tileY() != 10);
+    CHECK(game.ghosts()[0].tileX() != 9 || game.ghosts()[0].tileY() != 20);
     CHECK(!game.isOver() || game.lives() == 0);
 }
 
