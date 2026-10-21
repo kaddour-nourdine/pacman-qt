@@ -47,7 +47,7 @@ cmake -S . -B build -DPACMAN_BUILD_APP=ON -DPACMAN_BUILD_QT_TESTS=ON && cmake --
 - [x] **Code style** (S): added `.clang-format` (LLVM-based, 4-space, 100-col, Attach braces, left-aligned pointers) and applied it to `core/` and `tests/`. *Done when:* `clang-format --dry-run -Werror` is clean.
 
 ### Android polish
-- [ ] **Release signing** (S): replace the shared debug keystore with a real key.
+- [x] **Release signing** (S): `build-android.sh` now honours `PACMAN_KEYSTORE` / `PACMAN_KEYSTORE_PASS` / `PACMAN_KEY_ALIAS` / `PACMAN_KEY_PASS` (defaulting to the debug keystore); documented in `ANDROID.md`. Keystores are gitignored.
 - [x] **Perf diagnostics** (S): removed the frame-pacing probes (`pacman-perf: tick gap …` / `render-thread gap …`) and the `sfx trigger blocked` tripwire now that the audio investigation is closed; kept the audio health counters (`voicesStarted` / `framesWritten` / `peak`) that guard against a silent mixer.
 - [x] **Extra audio effects** (M): added `ghost_eaten.wav` (rising arpeggio) and `death.wav` (descending tone), wired through `SfxPlayer::playGhostEaten()` / `playDeath()` and the QML `ghostEaten` / `playerDied` signals.
 - [x] **Desktop display check** (S): verified the Qt app on a real desktop display (Wayland/X11) — window opens at 640×760, audio device detected, no crash.

@@ -137,31 +137,39 @@ cmake --build . -j$(nproc)
 APK_DIR="app/android-build/build/outputs/apk/release"
 UNSIGNED_APK="$APK_DIR/android-build-release-unsigned.apk"
 SIGNED_APK="$APK_DIR/pacman_app-signed.apk"
-KEYSTORE="$HOME/.android/debug.keystore"
+KEYSTORE="${PACMAN_KEYSTORE:-$HOME/.android/debug.keystore}"
+KEYSTORE_PASS="${PACMAN_KEYSTORE_PASS:-android}"
+KEY_ALIAS="${PACMAN_KEY_ALIAS:-androiddebugkey}"
+KEY_PASS="${PACMAN_KEY_PASS:-android}"
 
-# Sign the APK with a debug keystore so it can be installed with adb
+# Sign the APK. Defaults to the shared debug keystore so a fresh checkout
+# still produces an installable APK. For a release build, point these at a
+# real key created with keytool (see ANDROID.md "Release signing"):
+#   export PACMAN_KEYSTORE=/path/to/release.keystore
+#   export PACMAN_KEYSTORE_PASS=...
+#   export PACMAN_KEY_ALIAS=pacman
+#   export PACMAN_KEY_PASS=...
 KEYTOOL="keytool"
 if ! command -v keytool &> /dev/null && [ -n "$JAVA_HOME" ] && [ -x "$JAVA_HOME/bin/keytool" ]; then
     KEYTOOL="$JAVA_HOME/bin/keytool"
 fi
 
 if [ -f "$UNSIGNED_APK" ]; then
-    if [ ! -f "$KEYSTORE" ] && command -v "$KEYTOOL" &> /dev/null; then
+    if [ -z "$PACMAN_KEYSTORE" ] && [ ! -f "$KEYSTORE" ] && command -v "$KEYTOOL" &> /dev/null; then
         echo "Creating debug keystore at $KEYSTORE ..."
         mkdir -p "$HOME/.android"
-        "$KEYTOOL" -genkeypair -keystore "$KEYSTORE" -storepass android -keypass android \
-            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+        "$KEYTOOL" -genkeypair -keystore "$KEYSTORE" -storepass "$KEYSTORE_PASS" -keypass "$KEY_PASS" \
+            -alias "$KEY_ALIAS" -keyalg RSA -keysize 2048 -validity 10000 \
             -dname "CN=Android Debug,O=Android,C=US"
     fi
     APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
     if [ -n "$APKSIGNER" ]; then
-        echo "Signing APK..."
-        "$APKSIGNER" sign --ks "$KEYSTORE" --ks-pass pass:android --key-pass pass:android \
-            --out "$SIGNED_APK" "$UNSIGNED_APK" 2>/dev/null
+        echo "Signing APK with $KEYSTORE ..."
+        "$APKSIGNER" sign --ks "$KEYSTORE" --ks-pass "pass:$KEYSTORE_PASS" --key-pass "pass:$KEY_PASS" \
+            --ks-key-alias "$KEY_ALIAS" --out "$SIGNED_APK" "$UNSIGNED_APK" 2>/dev/null
     fi
 fi
 
-echo ""
 echo "Build successful!"
 echo ""
 if [ -f "$SIGNED_APK" ]; then

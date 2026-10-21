@@ -210,7 +210,23 @@ Device quirks (learned 2026-10-20 on a Tecno A059 / Android 16 / fr-BE):
    immersive mode, safe-area insets from `QWindow::safeAreaMargins()`, and the back button
    forwarded to the pause menu through JNI (`app/AndroidBridge.cpp`). Covered by
    `ViewTest.testBackKeyOpensThePauseMenu` and `ViewTest.testAndroidBackBridgeOpensThePauseMenu`.
-6. Signing uses a shared debug keystore — create a real key for releases.
+6. **Release signing** — the script defaults to the shared debug keystore so a fresh
+   checkout still produces an installable APK. For a release, create a real key and
+   point the script at it:
+
+   ```sh
+   keytool -genkeypair -v -keystore ~/pacman-release.keystore \\
+       -alias pacman -keyalg RSA -keysize 2048 -validity 10000
+   export PACMAN_KEYSTORE=$HOME/pacman-release.keystore
+   export PACMAN_KEYSTORE_PASS=...   # store password
+   export PACMAN_KEY_ALIAS=pacman
+   export PACMAN_KEY_PASS=...        # key password
+   ./build-android.sh release
+   ```
+
+   Keep the keystore and its passwords out of the repository (they are gitignored:
+   `*.keystore`, `*.jks`). Back the key up — losing it means you cannot update the
+   app on the Play Store.
 
 ## Android-Specific Code Changes So Far
 
