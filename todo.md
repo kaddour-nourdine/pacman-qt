@@ -63,14 +63,14 @@ cmake -S . -B build -DPACMAN_BUILD_APP=ON -DPACMAN_BUILD_QT_TESTS=ON && cmake --
 
 ---
 
-## Decisions to make (write the answer next to the item when you decide)
+## Decisions (resolved)
 
-1. **Keep the level file format or replace it** with a richer format (entities, rules, multiple levels per file)? The current format is deliberately minimal.
-2. **Tile collision or pixel collision?** Keep the simpler tile test, or move to overlap boxes for arcade fidelity?
-3. **Chain scoring vs per-ghost scoring** for ghosts eaten during one fright?
-4. **Where does the view live** — one `app/` for desktop+Android, or a shared QML module plus thin platform projects?
-5. **High score and settings storage** — view-local (`QSettings`) or a core-level `Storage` interface?
-6. **Should the core own a level-select / campaign** (progression, unlock rules), or should the view drive which `Level` it constructs? Today `Game` takes a single `Level`.
+1. **Level file format** — **keep minimal.** The current format is deliberately minimal and well-tested; add richness only when needed.
+2. **Tile vs pixel collision** — **tile.** Kept tile-based by design (deferred, documented in `docs/gameplay-rules.md`).
+3. **Chain vs per-ghost scoring** — **per-ghost.** Current implementation (points by ghost id) retained.
+4. **View location** — **one `app/`.** Single `app/` for desktop + Android; simpler.
+5. **High score/settings storage** — **view-local (`QSettings`).** Model stays I/O-free.
+6. **Campaign ownership** — **view drives.** `LevelManager` lives in the view; `Game` takes a single `Level`.
 
 ---
 
