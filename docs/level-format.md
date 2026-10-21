@@ -143,9 +143,13 @@ _.....# 1234 #....._
 #.###.###.#.###.###.#
 #o..#.....P.....#..o#
 ###.#.#.#####.#.#.###
-#.....#...#...#.....#
+#.....#.......#.....#
 #####################
 ```
+
+One tile deviates from the original GTK map: the wall at `(10, 19)` — the bottom corridor
+below the ghost house — was opened, so the two bottom pockets are one corridor again and the
+level holds one pellet more than the original (178 instead of 177).
 
 Facts worth knowing (all asserted by tests):
 
@@ -160,7 +164,7 @@ Facts worth knowing (all asserted by tests):
 | Clyde `4` | `(12, 10)` — inside the ghost house |
 | Power pellets `o` | `(1, 3)`, `(19, 3)`, `(1, 17)`, `(19, 17)` |
 | Tunnels | `(0, 10)` and `(20, 10)` |
-| Pellets | 177 total (173 `.` + 4 `o`) |
+| Pellets | 178 total (174 `.` + 4 `o`) |
 
 The house interior in `level1.txt` is **not sealed** (no `-` door tiles), so there are no
 "sealed behind door" constraints today and the player can walk into the ghost area. The two
