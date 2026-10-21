@@ -534,9 +534,37 @@ pellets, a yellow wedge Pac-Man whose mouth animates from `playerMouth` (red whi
 dome-plus-body ghosts with white/black eyes — pure blue when frightened (white while flashing),
 eyes-only when eaten. Overlays show `READY!`, `LEVEL CLEAR`, `GAME OVER`, `PAUSED` and
 `NO LEVELS FOUND` from `stateName`. A `Connections` block turns the controller's signals into a
-floating score popup with a `NumberAnimation`. Two `SoundEffect`s (`munch.wav`, `power.wav`)
-are played from the `pelletEaten` and `powerPelletEaten` signals — this is the `app/`-side
-audio that `architecture.md` §8 describes as the extension point for sound.
+floating score popup with a `NumberAnimation`, and a second one forwards the
+`pelletEaten` / `powerPelletEaten` signals to the C++ audio player (`sfx.playMunch()` /
+`sfx.playPower()`) — this is the `app/`-side audio that `architecture.md` §8 describes as the
+extension point for sound. The player itself is `app/SfxPlayer.{hpp,cpp}`: one persistent
+`QAudioSink` fed by a software mixer (`SfxMixer`), because per-play `QSoundEffect` restarts
+stalled the frame pipeline on Android (`ANDROID_BUILD_STATUS.md` §7).
+
+### `app/SfxPlayer.hpp` / `app/SfxPlayer.cpp`
+
+The audio path, in two classes:
+
+- **`SfxPlayer`** (exposed to QML as the `sfx` context property) opens the default audio
+  device once, decodes `assets/audio/munch.wav` and `power.wav` to float PCM and offers
+  `playMunch()` / `playPower()`. Triggering a sound only publishes a voice under a mutex
+  (microseconds) — nothing is started or stopped during gameplay, because per-play
+  `QSoundEffect` restarts stalled the whole frame pipeline on Android
+  (`ANDROID_BUILD_STATUS.md` §7).
+- **`SfxMixer`** is a `QIODevice` that the `QAudioSink` reads from: it mixes up to 4
+  voices (linear resampling to the device rate) and writes the sink's format
+  (Int16/Int32/Float/UInt8). Two details are easy to miss:
+  - **`bytesAvailable()` is overridden.** Qt's pipeline only pulls from a user `QIODevice`
+    when it reports data (`pullFromQIODeviceToRingbuffer()` bails out on
+    `bytesAvailable() == 0`), and a plain `QIODevice` reports 0 forever — the sink idled
+    and the game was silent (`ANDROID_BUILD_STATUS.md` §8).
+  - **The mix is clamped** to [-1, 1] after summing, because two overlapping munches
+    exceed full scale; `kSfxGain` (0.6) is the volume the old `SoundEffect` used.
+
+  The mixer also keeps three health counters (`voicesStarted`, `framesWritten`, `peak`),
+  logged at startup, every 10 s while playing and on sink-state changes: a silent mixer
+  is not an error, so it has to be measured. `ViewTest.testMixerFeedsTheAudioSink` guards
+  the regression.
 
 ---
 

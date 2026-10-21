@@ -61,7 +61,7 @@ anything failed, so it also works as a plain command-line tool.
 
 `app/` is built only with `-DPACMAN_BUILD_APP=ON` (default `OFF`, so the core still builds on a
 machine without Qt). It needs the Qt 6 development packages for **Quick**,
-**QuickControls2** and **Multimedia** (the latter for `SoundEffect`), e.g. on Fedora:
+**QuickControls2** and **Multimedia** (the latter for the audio player), e.g. on Fedora:
 
 ```sh
 sudo dnf install qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtmultimedia-devel

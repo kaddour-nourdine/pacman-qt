@@ -250,7 +250,7 @@ The design leaves a few obvious seams for work that has not been done yet:
 | More levels / a difficulty curve | drop `levelN.txt` into `levels/` and let `LevelManager::loadDirectory` pick it up; the knobs are `LevelConfig` |
 | A level-select screen | `LevelManager::levels()` + `nameFor(n)`; the view only reads |
 | Fruit, bonus items | `Tile::Fruit`/`FruitEaten` exist; timed spawn logic is still missing |
-| Sound | `Event`s are enough; the Qt view now plays `SoundEffect`s in response to events |
+| Sound | `Event`s are enough; the Qt view plays sounds through `SfxPlayer` (one persistent `QAudioSink` + software mixer) in response to events |
 | Sprite animation | `Player::animationPhase()` and `GhostMode` already expose what is needed |
 | Different ghost personalities | `Ghost::chaseTarget` is one `switch` per ghost id |
 | Save / high scores | the model has no file I/O; put it in the view or add an explicit `Storage` seam |

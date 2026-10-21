@@ -17,7 +17,7 @@ Legend: `[ ]` open · `[x]` done · `[!]` blocked · sizes **S** (< 1 h) / **M**
 | Docs | `README.md` + `docs/` (architecture, code tour, gameplay rules, level format, testing) |
 | Tools | `tools/pacman_text` terminal player and `tools/ai_demo` |
 | View | `app/` Qt Quick app — `GameController` bridge, classic vector arcade rendering (ported from the original GTK look), sound effects, high score persistence, keyboard input, and a passing headless QTest. **Fully documented in `docs/view-implementation.md`** |
-| Android | **build pipeline complete + first device test done** — Phase 5: signed APK installs/launches on a phone with bundled levels, touch input landed; mixer verification and the rest of device testing still open |
+| Android | **build pipeline complete + device tested** — Phase 5: signed APK installs/launches on a phone with bundled levels, touch input landed, **audio mixer verified** (silent-mixer bug found and fixed); lifecycle, orientation, back button and settings still open |
 | Git | repository initialised, branch `master`; Phase 4 sprite/audio work committed (see `HANDOFF.md`) |
 
 Build and test, for reference:
@@ -176,11 +176,14 @@ design decisions, testing, and verification checklist.
       persisted with `QSettings` in the view layer.
 - [x] **Audio**: a `SoundPlayer` that reacts to `Event`s (pellet, power pellet, ghost eaten,
       death). Keep all audio code in `app/`.
-      *Done:* `Main.qml` now has two `SoundEffect`s (`munch.wav` on `PelletEaten`, `power.wav`
-      on `PowerPelletEaten`) driven by the controller's per-`Event` signals; all audio code lives
-      in `app/`. Ghost-eaten and death sounds are still TODO for a fuller audio set.
-      On Android the playback path is a persistent-stream mixer (`SfxPlayer`/`SfxMixer`,
-      commit `bedd1dc`) — per-play `QSoundEffect` restarts stalled the frame pipeline.
+      *Done:* the sounds live in `app/assets/audio/` (`munch.wav` on `PelletEaten`, `power.wav`
+      on `PowerPelletEaten`); `Main.qml` calls the C++ player (`sfx.playMunch()` /
+      `sfx.playPower()`) from the controller's per-`Event` signals. The playback path is
+      `SfxPlayer`/`SfxMixer` (`app/SfxPlayer.*`): one persistent `QAudioSink` fed by a
+      software mixer — the old per-play `QSoundEffect` restarts stalled the whole frame
+      pipeline on Android (`ANDROID_BUILD_STATUS.md` §7) and the mixer itself was silent
+      until `bytesAvailable()` was overridden (§8). Ghost-eaten and death sounds are still
+      TODO for a fuller audio set.
 - [x] **Test the view headlessly**: `QT_QPA_PLATFORM=offscreen` with `QTest`, asserting that a
       QML load succeeds and that a key event reaches the player.
       *Done:* `tests/test_view.cpp` is wired as the `QtView` CTest test behind
@@ -228,16 +231,21 @@ design decisions, testing, and verification checklist.
 - [x] **Touch input**: swipe/drag to turn with a dead zone (`max(30px, 8% of board)`,
       origin re-arms while held), tap = Space — done (commit `1623f57`), confirmed by
       hand on the phone.
-- [ ] **Verify the audio mixer on hardware** (first item of the next session): after the
-      per-play `QSoundEffect` rework (commit `bedd1dc`, investigation in
-      `ANDROID_BUILD_STATUS.md` §7), confirm munches are audible at the right moments,
-      `pacman-perf` tick gaps stay near the mute baseline (~5 per game instead of ~50)
-      and no `pacman: sfx trigger blocked` lines appear. The confirming logcat of the
-      last round was lost to a USB disconnect — the code has not yet been heard working.
-- [ ] **Frame pacing on device**: instrumentation ships (tick gap/phase/ui-cpu lines,
-      render-thread cadence probe, QML frame-gap log — all anomaly-only); use it once
-      the mixer is verified to confirm smooth gameplay, then decide whether the
-      diagnostics stay on.
+- [x] **Verify the audio mixer on hardware**: done 2026-10-21 — and the round found a real
+      bug: the persistent mixer produced **no sound at all** on the phone, because Qt only
+      pulls from a user `QIODevice` that reports `bytesAvailable() > 0` (a plain `QIODevice`
+      reports 0 forever → the sink idled in `IdleState`, 0 frames read). Fixed by
+      overriding `bytesAvailable()`; `ANDROID_BUILD_STATUS.md` §8 has the full root cause.
+      Permanent health counters (`voicesStarted` / `framesWritten` / `peak`) now make the
+      audio path observable, and `ViewTest.testMixerFeedsTheAudioSink` guards the regression.
+      On-device logcat: `pacman-audio: playing triggers 50 sink 0 error 0 frames 645824
+      seconds 13.4547 peak 1` — audio flows, **0** tick gaps, **0** `sfx trigger blocked`;
+      the user confirmed the game plays without lag.
+- [x] **Frame pacing on device**: the instrumentation did its job — after the mixer fix a
+      play-through on the phone logged **0** `pacman-perf: tick gap` lines, **0** `sfx
+      trigger blocked` and a single benign 41 ms render-thread gap at startup. The user
+      confirmed no stutter. The diagnostics stay in (anomaly-only) for now; the
+      keep-vs-remove decision moves to the end of Phase 5.
 - [ ] **Lifecycle**: handle suspend/resume — the model should pause (`Engine` time scale 0) and
       resume without a giant `dt` spike; the existing frame clamp already helps.
 - [ ] **Orientation and safe areas**: landscape-only, insets-aware layout.

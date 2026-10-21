@@ -16,7 +16,7 @@ holds only the state and the constraints.
 | Qt | **6.11 installed** (`qt6-qtbase-devel`, `qt6-qtdeclarative-devel`); QtQuick/QtQuick.Window/Controls runtime modules present |
 | View | `app/` builds with `-DPACMAN_BUILD_APP=ON`; the `GameController` + QML module live in a `pacman_view` static library, `pacman_app` is a thin `main.cpp`; runs under `QT_QPA_PLATFORM=offscreen`; draws the maze and actors as vectors in the classic arcade style (ported from the original GTK project) and plays WAV sound effects |
 | Working tree | clean (last commits: `131c6e3` bundled levels, `1623f57` touch input, `bedd1dc` audio mixer + on-device diagnostics, docs) |
-| Device tested | Tecno A059 (AsteroidsEEA), Android 16, arm64-v8a, fr-BE — APK installed/launched, bundled levels + touch confirmed; **audio-mixer verification still owed** (last round's logcat was lost to a USB drop) |
+| Device tested | Tecno A059 (AsteroidsEEA), Android 16, arm64-v8a, fr-BE — APK installed/launched, bundled levels + touch confirmed; **audio mixer verified** (silent-mixer bug found and fixed, see `ANDROID_BUILD_STATUS.md` §8) |
 | Last verified commands | `cmake -S . -B build -DPACMAN_BUILD_APP=ON -DPACMAN_BUILD_QT_TESTS=ON && cmake --build build -j16 && ctest --test-dir build` |
 
 `build/` exists and is current, so a rebuild is incremental.
@@ -48,8 +48,11 @@ holds only the state and the constraints.
   maze/actors on a `Canvas` as vectors in the classic arcade style (ported from the original GTK
   project — the SVG actor sprites in `app/assets/sprites/` are no longer used at runtime; only
   `life.svg` remains for the HUD), shows the
-  HUD/overlays, handles keys, and plays the WAV effects in `app/assets/audio/` (`munch.wav` on
-  `PelletEaten`, `power.wav` on `PowerPelletEaten`). `GameController` and the QML module are
+  HUD/overlays, handles keys, and plays the WAV effects in `app/assets/audio/`
+  (`munch.wav` on `PelletEaten`, `power.wav` on `PowerPelletEaten`). The playback itself is
+  C++: `SfxPlayer`/`SfxMixer` (`app/SfxPlayer.*`) own one persistent `QAudioSink` and mix the
+  decoded WAVs into it — QML only calls `sfx.playMunch()` / `sfx.playPower()`.
+  `GameController` and the QML module are
   compiled into a `pacman_view` static library, so the headless test can link the same view.
 - `tests/` — custom harness, no external dependency; `tests/TestLevelManager.cpp` covers the
   loader (temp directories, all-or-nothing, sorted directory scan) and `tests/TestReachability.cpp`
@@ -86,14 +89,19 @@ holds only the state and the constraints.
    resources; when the build-host `PACMAN_LEVELS_DIR` is absent, the view copies them into
    `QStandardPaths::AppDataLocation` and loads from there
    (`GameController::materializeBundledLevels()`, tested by `ViewTest.testBundledLevelsAreShipped`).
-9. **Audio mixer verified only by analysis** — commit `bedd1dc` replaced per-play
+9. **Audio mixer verified on hardware** (closed) — commit `bedd1dc` replaced per-play
    `QSoundEffect` restarts with a single persistent `QAudioSink` + software mixer
    (`app/SfxPlayer.*`) after on-device instrumentation proved the restarts caused
    every frame gap (~50 tick gaps/game → ~5 with sound muted; full chain in
-   `ANDROID_BUILD_STATUS.md` §7). One confirmation round on hardware is owed:
-   sounds audible at the right moments, tick gaps stay low, no
-   `pacman: sfx trigger blocked` lines. The perf diagnostics ship in the app and
-   only log on anomalies — decide keep-vs-remove after that round.
+   `ANDROID_BUILD_STATUS.md` §7). The first confirmation round then found the
+   mixer was **completely silent**: Qt only pulls from a user `QIODevice` when it
+   reports `bytesAvailable() > 0`, so the sink idled without reading a frame
+   (`ANDROID_BUILD_STATUS.md` §8). Fixed by overriding `bytesAvailable()`, and
+   guarded by `ViewTest.testMixerFeedsTheAudioSink` plus permanent health counters
+   (`voicesStarted` / `framesWritten` / `peak`). On the phone: audio flows, 0 tick
+   gaps, 0 `sfx trigger blocked`, and the user confirmed the game plays without lag.
+   The perf diagnostics ship in the app and only log on anomalies — decide
+   keep-vs-remove at the end of Phase 5.
 
 ## Suggested first action next session
 
@@ -141,8 +149,26 @@ high-score persistence are in place. Phase 4 documentation is now complete in `d
 - Pellet sounds caused visible stutter; root-caused with on-device instrumentation
   (tick/render probes) + a mute A/B build: per-play `QSoundEffect` restarts stalled the
   whole frame pipeline (~50 tick gaps/game → ~5 muted). Replaced by the persistent
-  `QAudioSink` + software mixer `SfxPlayer`/`SfxMixer` (commit `bedd1dc`) — audible
-  confirmation still owed (the last round's logcat was lost to a USB disconnect)
+  `QAudioSink` + software mixer `SfxPlayer`/`SfxMixer` (commit `bedd1dc`)
+
+**Device test session 2026-10-21 — the mixer was silent, now it is not**:
+- The confirmation round of §7's rework exposed a second, quieter bug: the game made
+  **no sound at all** on the phone (sink in `IdleState`, 0 frames read) — and the
+  desktop looked perfectly healthy, because a silent mixer is not an error.
+- Root cause in Qt 6.12's own source
+  (`qaudio_qiodevice_support_p.h`, `pullFromQIODeviceToRingbuffer`): Qt only pulls from a
+  user `QIODevice` when `device->bytesAvailable() > 0`; a plain `QIODevice` reports 0
+  forever. `SfxMixer` now overrides `bytesAvailable()` and claims a 200 ms chunk
+  (generator style) → the sink finally reads.
+- Permanent health counters were added so this can never be invisible again:
+  `voicesStarted` / `framesWritten` / `peak`, logged at startup, every 10 s while
+  playing and on sink-state changes (`pacman-audio: playing triggers 50 sink 0 error 0
+  frames 645824 seconds 13.4547 peak 1`).
+- Also fixed: `kSfxGain` (0.6) was never applied, and overlapping munches summed to
+  1.016 → the mix is now clamped to [-1, 1] (peak reads exactly 1).
+- Regression guard: `ViewTest.testMixerFeedsTheAudioSink` (skips without an audio device).
+- Result on the phone: audio flows, **0** `tick gap`, **0** `sfx trigger blocked`, one
+  benign 41 ms render-thread gap at startup; the user confirmed the game plays without lag.
 
 **First actions next session**:
 ```sh
@@ -157,17 +183,17 @@ adb logcat -G4M; adb logcat -c
 adb logcat -v time > /tmp/logcat-device.txt &   # capture survives buffer rotation
 adb shell am start -n org.qtproject.example.pacman_app/org.qtproject.qt.android.bindings.QtActivity
 ```
-Then play a game and check: munches are audible, `grep -c "tick gap"` near the mute
-baseline (~5), no `sfx trigger blocked`, no unexpected render-thread gaps.
+Then work through the remaining `todo.md` Phase 5 items: lifecycle suspend/resume,
+orientation/safe areas, back button / immersive mode, settings persistence.
 
 Device quirks learned: the installed package is `org.qtproject.example.pacman_app`
 (Qt's template — the `android/` directory is reference material only, not wired into
 the build); our `qInfo` lands under logcat tag `default` (Qt's own lines use `Qt`);
-launching while the screen dozes and `main()` stalls until the screen wakes.
+launching while the screen dozes and `main()` stalls until the screen wakes; on the
+desktop Qt logs go to syslog unless `QT_FORCE_STDERR_LOGGING=1` is set.
 
-**Still open (Phase 5, details in `todo.md`)**: mixer verification (above), lifecycle
-suspend/resume, orientation/safe areas, back button, settings persistence,
-touch-friendly pacing, release signing. Also decide whether the perf diagnostics stay
-enabled (they only log on anomalies).
+**Still open (Phase 5, details in `todo.md`)**: lifecycle suspend/resume, orientation/safe
+areas, back button, settings persistence, touch-friendly pacing, release signing. Also
+decide whether the perf diagnostics stay enabled (they only log on anomalies).
 
 Minor polish (extra audio effects) is tracked in `todo.md`.
