@@ -58,7 +58,7 @@ cmake -S . -B build -DPACMAN_BUILD_APP=ON -DPACMAN_BUILD_QT_TESTS=ON && cmake --
 - [x] **Pixel-accurate collision** (M, optional): **deferred by decision** — keep tile-based collision as designed (documented in `docs/gameplay-rules.md` §7). Revisit only as a deliberate fidelity decision.
 
 ### Long-term
-- [ ] **CI expansion** (M): add a job that builds the Qt app under `qt-qemu`/offscreen (already covered by the offscreen job; qemu optional).
+- [x] **CI expansion** (M): the `qt` job builds the Qt app and runs the headless tests under `QT_QPA_PLATFORM=offscreen`; an `asan` job adds sanitizer coverage. qemu-based device tests remain optional.
 - [ ] **Docs sync** (ongoing): new rules → `docs/gameplay-rules.md`, new files → `docs/code-tour.md`.
 
 ---
