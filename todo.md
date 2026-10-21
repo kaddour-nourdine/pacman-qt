@@ -288,9 +288,17 @@ design decisions, testing, and verification checklist.
       branches, then check the report into `docs/` as a baseline.
 - [ ] **Fuzz the parser**: generate random header/map inputs and assert `parse` either succeeds
       or returns a non-empty error — never crashes, never throws.
-- [ ] **Determinism regression**: a test that replays a recorded input log and compares a state
+- [x] **Determinism regression**: a test that replays a recorded input log and compares a state
       hash (score, lives, positions, modes) against a golden value; re-generate the golden
       value only when a deliberate rule change happens.
+      *Done:* `tests/TestDeterminism.cpp` replays a 25 s input log against a fixed level and a
+      fixed seed and digests the whole trajectory: the discrete state (tiles, directions, modes,
+      counters) after every step — all exact — plus the final positions, quantized to 1/64 of a
+      tile so a different rounding cannot change the digest. The replay restarts the game after a
+      death, the way the view does. Four checks: two identical replays agree, the digest matches
+      the golden value, a different seed leads to a different game, and the replay really
+      exercises the game (pellets, a power pellet, frightened mode, a death) so the golden value
+      cannot pin a game that does nothing.
 - [ ] **Performance**: BFS per decision for eyes is fine at 21×21 but measure it; add caching if
       a bigger level ever needs it.
 - [ ] **Install/export rules** for `pacman_core` so the Android app and any future tooling can

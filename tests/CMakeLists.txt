@@ -1,5 +1,6 @@
 add_executable(pacman_tests
     TestMain.cpp
+    TestDeterminism.cpp
     TestEngine.cpp
     TestGame.cpp
     TestGhost.cpp
@@ -22,7 +23,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(pacman_tests PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-foreach(suite Direction Vec2 Tile Level LevelManager Maze Player Ghost Game Engine ModeSchedule)
+foreach(suite Direction Vec2 Tile Level LevelManager Maze Player Ghost Game Engine ModeSchedule Determinism)
     add_test(NAME ${suite} COMMAND pacman_tests ${suite})
 endforeach()
 add_executable(pacman_tests_reach TestReachability.cpp TestMain.cpp)
