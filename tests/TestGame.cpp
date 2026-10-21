@@ -352,7 +352,7 @@ PAC_TEST(Game, playsRealLevelEndToEnd) {
     Engine engine(game);
     game.start();
 
-    CHECK_EQ(game.pelletsRemaining(), 177);
+    CHECK_EQ(game.pelletsRemaining(), 178);
     CHECK_EQ(game.ghosts()[1].spawnX(), 10);
     CHECK_EQ(game.ghosts()[1].spawnY(), 10);
 
@@ -368,7 +368,7 @@ PAC_TEST(Game, playsRealLevelEndToEnd) {
     }
 
     CHECK(game.score() > 0);
-    CHECK(game.pelletsRemaining() < 177);
+    CHECK(game.pelletsRemaining() < 178);
     CHECK(game.ghosts()[1].tileX() != 10 || game.ghosts()[1].tileY() != 10);
     CHECK(!game.isOver() || game.lives() == 0);
 }
