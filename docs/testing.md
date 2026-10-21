@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
 `tests/CMakeLists.txt` turns each suite name into a CTest test:
 
 ```cmake
-foreach(suite Direction Vec2 Tile Level LevelManager Maze Player Ghost Game Engine ModeSchedule)
+foreach(suite Direction Vec2 Tile Level LevelManager Maze Player Ghost Game Engine ModeSchedule Determinism)
     add_test(NAME ${suite} COMMAND pacman_tests ${suite})
 endforeach()
 ```
@@ -133,9 +133,35 @@ can run a whole scatter phase (`game.step(0.5f)`) in microseconds and assert on 
 | `Game` | 18 | ready-and-frozen, pellet collection and events, power pellet frightens ghosts, fright ending and schedule resumption, eating a ghost, eyes respawn, collision kills, game over after three lives, level completion and level 2, full reset, walking the `LevelManager` list (advance, wrap, lives carrying over, `reset` back to level 1, empty list ⇒ game over), seed reproducibility, the real level end to end, state names, soak test invariants, ghosts stay on walkable tiles after mid-tile reversal |
 | `Engine` | 8 | fixed step size, partial-step accumulation, long-frame clamping, time scale, ignoring non-positive frames, no simulation while `Ready`, real-time driving, reproducibility with jittered frame times |
 | `ModeSchedule` | 2 | default alternation, custom durations |
+| `Determinism` | 4 | two identical replays agree, the digest matches the golden value, a different seed leads to a different game, the replay really exercises the game |
 
 (`ModeSchedule`'s two tests physically live in `TestGame.cpp`; the suite name is what matters to
 CTest.)
+
+### The determinism replay
+
+`tests/TestDeterminism.cpp` is the regression net for the whole model. It replays a recorded
+input log — "at step *n*, ask for this direction" — against a level written inside the test file
+and a fixed seed, and digests the trajectory:
+
+- the **discrete state** after every step (tiles, directions, ghost modes, score, lives, pellet
+  count). All of it is exact, so the digest never depends on how a compiler rounds a float;
+- the **final positions**, quantized to 1/64 of a tile. An entity moves at least 3.5/120 of a
+  tile per step, so a single step of drift is still visible, while a last-bit rounding
+  difference is not.
+
+Two things are worth knowing about it:
+
+- The replay **restarts the game after a death**, the way the view does when the player presses
+  a key. Without that, the game freezes in the `Ready` state, the ghosts reset to their spawn
+  points and the digest stops depending on the seed — the replay would still be reproducible, but
+  it would no longer pin anything about the ghost behaviour.
+- The golden value (`kGoldenDigest` in the test file) is tied to the toolchain, because the
+  positions are floats. Regenerate it **only** when a rule changes on purpose; a change that you
+  did not ask for is a bug, and the test is telling you so.
+
+A test that cannot fail is decoration — try it once: change the seed in `Ghost::chooseDirection`
+and watch the `Determinism` suite go red.
 
 ---
 

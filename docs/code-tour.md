@@ -585,5 +585,6 @@ Described in detail in [`testing.md`](testing.md). In short:
 | `tests/TestGhost.cpp` | targets per personality, tie-breaks, reversal, eyes, determinism |
 | `tests/TestGame.cpp` | pellets, power pellets, collisions, lives, level flow, the level list, real level |
 | `tests/TestEngine.cpp` | fixed stepping, clamping, time scale, reproducibility |
+| `tests/TestDeterminism.cpp` | replays a recorded input log against a fixed level and seed and digests the whole trajectory against a golden value |
 | `tests/TestReachability.cpp` | separate `pacman_tests_reach` binary: BFS that every pellet/fruit is reachable in every `levels/*.txt` |
 | `tests/test_view.cpp` | optional `QtView` QTest (only with `PACMAN_BUILD_QT_TESTS=ON`): QML loads and a key event reaches the controller |
