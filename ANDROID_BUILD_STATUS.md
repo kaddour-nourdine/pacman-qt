@@ -215,9 +215,75 @@ game plays **without lag**.
    §7 above); reworked into the persistent-stream mixer (commit `bedd1dc`).
    That mixer was in turn silent until `bytesAvailable()` was overridden (§8);
    both are fixed and verified on the phone — audio flows, no frame gaps.
-4. **Lifecycle**: suspend/resume pause handling untested on device.
-5. **Orientation / safe areas / back button**: not handled yet (see `todo.md` Phase 5).
+4. **Lifecycle**: implemented (`GameController::setSuspended()` on
+   `Qt::ApplicationSuspended`, tick timer stopped, frame clock restarted on
+   resume); covered by `ViewTest.testSuspendingFreezesTheModel`, not yet
+   re-verified on a device.
+5. **Orientation / safe areas / back button**: implemented with a custom
+   activity and manifest (§9); covered by two `ViewTest` cases, not yet
+   re-verified on a device.
 6. **Signing**: currently a shared debug keystore; release signing needs a real key.
+
+---
+
+## 9. The app ships its own activity and manifest
+
+The orientation lock, the immersive mode and the back button need an
+activity of our own — Qt's `QtActivity` offers none of them. Two pieces make
+that work:
+
+**The manifest** (`android/package/AndroidManifest.xml`) replaces the one
+`androiddeployqt` generates. The package source directory is copied verbatim
+into `build-android/app/android-build/`, so the custom manifest survives (it
+is *not* regenerated). It has to carry everything Qt needs, because nothing is
+merged with a generated one any more:
+
+- `android:name="org.qtproject.qt.android.bindings.QtApplication"`,
+- the `<meta-data android:name="android.app.lib_name" android:value="pacman_app"/>`,
+- the `androidx.core.content.FileProvider` with `@xml/qtprovider_paths`.
+
+**The activity** (`android/package/src/org/pacman/qt/MainActivity.java`)
+extends `QtActivity` and adds:
+
+- `setRequestedOrientation(SCREEN_ORIENTATION_SENSOR_LANDSCAPE)`,
+- `FLAG_KEEP_SCREEN_ON` and the `SYSTEM_UI_FLAG_IMMERSIVE_STICKY` flags,
+- the back-button interception.
+
+**Why the back button needs JNI.** Android delivers the back press to the
+activity, not to the Qt window, and Qt's own input delegate consumes it:
+`QtActivityBase.onResume()` registers an `OnBackInvokedCallback` (API 33+)
+and `QtInputDelegate` swallows the `KEYCODE_BACK` key event on older
+platforms. So the activity takes the press over:
+
+- `dispatchKeyEvent` intercepts `KEYCODE_BACK` (hardware button, older
+  platforms) and consumes it, so the framework never closes the activity;
+- on API 33+ the activity registers its own `OnBackInvokedCallback` — **after**
+  `super.onResume()`, because Qt registers its callback there and the
+  dispatcher keeps only one callback per priority.
+
+Both paths call the native method `nativeBackPressed()`, which is
+`Java_org_pacman_qt_MainActivity_nativeBackPressed` in `app/AndroidBridge.cpp`.
+The symbol is exported by `libpacman_app_arm64-v8a.so` (the library the JVM
+loads), queues the call onto the Qt thread and emits `backPressed()`, which
+the QML side turns into the pause menu.
+
+Verification of the packaged APK (no device needed):
+
+```sh
+# the manifest in the APK is ours
+aapt2 dump xmltree --file AndroidManifest.xml pacman_app-signed.apk | grep screenOrientation
+#   → http://schemas.android.com/apk/res/android:screenOrientation(0x0101001e)=6  (sensorLandscape)
+aapt2 dump badging pacman_app-signed.apk | grep launchable-activity
+#   → launchable-activity: name='org.pacman.qt.MainActivity' label='Pac-Man'
+
+# the Java class was compiled and is in the dex
+unzip -l pacman_app-signed.apk | grep classes.dex
+
+# the JNI symbol is exported
+nm -D build-android/app/android-build/libs/arm64-v8a/libpacman_app_arm64-v8a.so \
+    | grep nativeBackPressed
+#   → 0000000000091718 T Java_org_pacman_qt_MainActivity_nativeBackPressed
+```
 
 ---
 
@@ -230,16 +296,27 @@ app/CMakeLists.txt                  # + QT_ANDROID_COMPILE_SDK_VERSION property
 core/src/Level.cpp                  # classic-locale istringstream float parsing (portable)
 app/SfxPlayer.{hpp,cpp}             # persistent-stream mixer: bytesAvailable() override,
                                     # gain, clamp, health counters (§8)
-tests/test_view.cpp                 # + ViewTest.testMixerFeedsTheAudioSink (regression guard)
-android/                            # manifest/activity reference material (Qt templates drive the real build)
+app/AppSettings.{hpp,cpp}           # persistent settings (sound, slow mode)
+app/ScreenInsets.{hpp,cpp}          # safe-area insets (QWindow::safeAreaMargins)
+app/AndroidBridge.{hpp,cpp}         # JNI back-button bridge (§9)
+app/GameController.{hpp,cpp}        # suspend/resume, time scale, settings ownership
+tests/test_view.cpp                 # + ViewTest.testMixerFeedsTheAudioSink (regression guard),
+                                    #   testBackKeyOpensThePauseMenu,
+                                    #   testAndroidBackBridgeOpensThePauseMenu,
+                                    #   testSuspendingFreezesTheModel,
+                                    #   testSettingsArePersisted, testSlowModeScalesTheModel
 android/icon/                      # launcher-icon artwork + generate-icons.sh (inkscape)
-android/package/                   # QT_ANDROID_PACKAGE_SOURCE_DIR: the launcher icon res/
+android/package/                   # QT_ANDROID_PACKAGE_SOURCE_DIR: the manifest, the
+                                   # activity (src/org/pacman/qt/MainActivity.java)
+                                   # and the launcher icon res/
 ~/Qt/6.12.0/android_arm64_v8a/      # Qt kit (4 cmake dirs restored from armv7 + bitness fix)
 ```
 
 ---
 
 **Status:** ✅ Build pipeline working end-to-end; installed and launched on hardware;
-audio verified on the phone (mixer fixed + audible, no frame gaps)
-**Next Action:** the remaining `todo.md` Phase 5 items: lifecycle
-suspend/resume, orientation/safe areas, back button, settings persistence.
+audio verified on the phone (mixer fixed + audible, no frame gaps); lifecycle,
+orientation/safe areas and the back button implemented (own activity + manifest),
+covered by headless tests and awaiting a device pass
+**Next Action:** a phone pass over the new lifecycle/back-button behaviour, then
+the Phase 6 items in `todo.md`.

@@ -22,11 +22,12 @@ The project follows a **model / view split**:
 | --- | --- |
 | Simulation model (maze, player, ghosts, rules, level list, clock) | Done, 100 tests passing |
 | Level file format, level list (`LevelManager`) + three playable levels (`levels/level1.txt` is the classic arcade maze, `levels/level2.txt`, `levels/level3.txt`) | Done |
-| Qt Quick / QML view, window, input (`app/`, needs Qt 6) | Done (classic vector arcade rendering, HUD, sound effects) |
+| Qt Quick / QML view, window, input (`app/`, needs Qt 6) | Done (classic vector arcade rendering, HUD, sound effects, pause menu) |
 | Headless terminal renderer (`tools/pacman_text`) | Done |
-| Automated headless Qt view test (`tests/test_view.cpp`, `PACMAN_BUILD_QT_TESTS`) | Done (loads QML and checks a key event reaches the controller) |
+| Automated headless Qt view test (`tests/test_view.cpp`, `PACMAN_BUILD_QT_TESTS`) | Done (loads QML and checks a key event reaches the controller; 11 cases: input, back key, pause-menu entries, Android bridge, suspend/resume, settings, slow mode, audio) |
 | Android packaging | Build pipeline complete — `./build-android.sh` cross-compiles the Qt app for arm64-v8a and produces a signed APK |
 | Android on-device | Verified on a phone (Tecno A059, Android 16): touch controls, audio (persistent-stream mixer), bundled levels, Pac-Man launcher icon |
+| Android lifecycle / layout | Implemented — landscape + immersive mode, safe-area insets, back button = pause menu (own activity), suspend/resume without a time spike, persistent sound/speed settings |
 
 The model runs on its own: `Game.playsRealLevelEndToEnd` plays a level for ten simulated
 seconds and checks that pellets get eaten and the ghosts leave their house. To watch it without
@@ -70,14 +71,18 @@ cmake -S . -B build -DPACMAN_BUILD_APP=ON && cmake --build build -j
 ./build/app/pacman_app
 ```
 
-Controls: arrow keys / WASD to steer, **Space** to start or restart, **P** or **Esc** to pause,
-**R** to reset. For a machine with no display (CI), run it with
+Controls: arrow keys / WASD to steer, **Space** to start or restart, **P** to pause,
+**Esc** (or the Android back button) to open the pause menu, **M** to mute, **R** to reset.
+On a touch screen: swipe to steer, tap to start/restart, and the `≡` button in the HUD opens
+the pause menu. For a machine with no display (CI), run it with
 `QT_QPA_PLATFORM=offscreen`.
 
 The headless view test (`tests/test_view.cpp`) is built only with `-DPACMAN_BUILD_QT_TESTS=ON`
 (which also requires `PACMAN_BUILD_APP=ON`) and needs the Qt 6 **Test** component. It is
 registered as the `QtView` CTest test and runs under `QT_QPA_PLATFORM=offscreen`: it loads
-`Main.qml` and checks that a key event sent to the window reaches the controller.
+`Main.qml` and checks that a key event sent to the window reaches the controller, plus the
+pause menu (back key and the Android bridge), suspend/resume, the persisted settings and the
+slow mode.
 
 ---
 
@@ -93,8 +98,14 @@ app/                        the Qt Quick view (built only with -DPACMAN_BUILD_AP
   CMakeLists.txt            builds the pacman_view library + the thin pacman_app executable
   main.cpp                  QGuiApplication + QQmlApplicationEngine entry point
   GameController.*          the only bridge between QML and the model
-  Main.qml                  the maze, HUD, overlays, keyboard input and sound effects
+  AppSettings.*             persistent user settings (sound, slow mode)
+  ScreenInsets.*            the safe area (notch, system bars) for the layout
+  AndroidBridge.*           JNI bridge for the Android back button
+  Main.qml                  the maze, HUD, overlays, pause menu, input and sound effects
   assets/                   SVG sprites, the app icon, and WAV sound effects (embedded as Qt resources)
+android/                    the Android package: manifest, activity and launcher icon
+  package/                  QT_ANDROID_PACKAGE_SOURCE_DIR (manifest + our activity + res/)
+  icon/                     the launcher-icon artwork
 tools/
   pacman_text/              a terminal renderer you can actually play
   ai_demo/                  a small scripted run of the engine

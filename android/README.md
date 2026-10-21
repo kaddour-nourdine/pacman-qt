@@ -6,9 +6,9 @@ This directory contains Android-specific configuration for building pacman-qt on
 
 | Path | Used? | What it does |
 | --- | --- | --- |
-| `package/` | **yes** | `QT_ANDROID_PACKAGE_SOURCE_DIR` of the `pacman_app` target. Contributes `res/` — the launcher icon (adaptive for API 26+, legacy PNGs for older versions). |
+| `package/` | **yes** | `QT_ANDROID_PACKAGE_SOURCE_DIR` of the `pacman_app` target. Contributes the manifest, the activity (`package/src/org/pacman/qt/MainActivity.java`) and `res/` — the launcher icon (adaptive for API 26+, legacy PNGs for older versions). |
 | `icon/` | source only | The artwork the launcher bitmaps are generated from, plus `generate-icons.sh`. |
-| `AndroidManifest.xml`, `CMakeLists.txt`, `src/` | no | Reference material from an early Qt 5 attempt. Qt's own template generates the real manifest and activity. |
+| `AndroidManifest.xml`, `CMakeLists.txt`, `deploy.json` | no | Reference material from an early Qt 5 attempt. Qt's own template generates the real manifest, and the activity now lives in `package/src/`. |
 
 ## Prerequisites
 
@@ -69,15 +69,35 @@ invocation (it uses the NDK's own toolchain file plus
 - Tap to start/pause the game
 
 ### Lifecycle
-- Game pauses when app goes to background
-- Game resumes when app comes to foreground
-- No frame spikes on resume (Engine handles this)
+- Game pauses when app goes to background (`Qt::ApplicationSuspended`): the
+  tick timer stops and the model is frozen
+- Game resumes when app comes to foreground; the time spent in the background
+  is thrown away, so there is no frame spike on resume
 
 ### UI Adaptations
-- Landscape-only orientation
-- Safe area insets for notched devices
-- Immersive mode (full-screen)
-- Back button = pause menu
+- Landscape-only orientation (`sensorLandscape`: both landscape ways)
+- Safe area insets for notched devices (`QWindow::safeAreaMargins()`)
+- Immersive mode (full-screen, the system bars come back on a swipe)
+- Back button = pause menu (the activity forwards it to the game through JNI,
+  see `package/src/org/pacman/qt/MainActivity.java`)
+
+## The Activity
+
+`package/src/org/pacman/qt/MainActivity.java` extends Qt's `QtActivity` and
+adds three things:
+
+1. **Orientation** — the game is locked to landscape.
+2. **Immersive mode** — the status and navigation bars are hidden; a swipe
+   from the edge brings them back.
+3. **The back button** — Android hands the back press to the activity, and
+   Qt's own input delegate swallows it (an `OnBackInvokedCallback` on API 33+,
+   a consumed key event on older versions). The activity intercepts it and
+   calls `nativeBackPressed()`, a JNI function in `app/AndroidBridge.cpp`
+   that opens the pause menu.
+
+The manifest in `package/AndroidManifest.xml` replaces the generated one, so
+it has to keep everything Qt needs: the `QtApplication`, the
+`android.app.lib_name` meta data and the `FileProvider`.
 
 ## Deployment
 
