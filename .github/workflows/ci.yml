@@ -46,7 +46,8 @@ jobs:
         uses: jurplel/install-qt-action@v3
         with:
           version: '6.8'
-          modules: 'qtbase qtdeclarative qtmultimedia'
+          arch: 'linux_gcc_64'
+          modules: 'qtmultimedia'
 
       - name: Configure
         run: |
