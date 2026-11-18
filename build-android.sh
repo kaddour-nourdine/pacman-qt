@@ -10,7 +10,11 @@ BUILD_DIR="build-android"
 
 # Set Android environment
 if [ -z "$ANDROID_HOME" ]; then
-    export ANDROID_HOME=$HOME/Android
+    if [ -d "$HOME/Android/Sdk" ]; then
+        export ANDROID_HOME=$HOME/Android/Sdk
+    else
+        export ANDROID_HOME=$HOME/Android
+    fi
 fi
 
 if [ -z "$ANDROID_SDK_ROOT" ]; then
@@ -18,15 +22,27 @@ if [ -z "$ANDROID_SDK_ROOT" ]; then
 fi
 
 if [ -z "$ANDROID_NDK_ROOT" ]; then
-    export ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/26.2.11394342
+    # Prefer the NDK actually installed under the SDK.
+    if [ -d "$ANDROID_HOME/ndk" ]; then
+        NDK_DIR=$(ls -d "$ANDROID_HOME"/ndk/*/ 2>/dev/null | sort -V | tail -1)
+        if [ -n "$NDK_DIR" ]; then
+            export ANDROID_NDK_ROOT="${NDK_DIR%/}"
+        fi
+    fi
+    if [ -z "$ANDROID_NDK_ROOT" ]; then
+        export ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/26.2.11394342
+    fi
 fi
 
-# Gradle needs a full JDK (javac). The default java-25-openjdk is JRE-only.
-if [ -z "$JAVA_HOME" ] && [ ! -x /usr/lib/jvm/java-25-openjdk/bin/javac ]; then
-    if [ -x /usr/lib/jvm/java-27/bin/javac ]; then
-        export JAVA_HOME=/usr/lib/jvm/java-27
-        echo "Using JDK from $JAVA_HOME"
-    fi
+# Gradle needs a full JDK (javac).
+if [ -z "$JAVA_HOME" ]; then
+    for cand in "$HOME"/jdk-*/ "$HOME"/.jdks/*/ /usr/lib/jvm/java-*-openjdk /usr/lib/jvm/java-*; do
+        if [ -x "$cand/bin/javac" ]; then
+            export JAVA_HOME="${cand%/}"
+            echo "Using JDK from $JAVA_HOME"
+            break
+        fi
+    done
 fi
 
 # Add Android tools to PATH
@@ -115,6 +131,16 @@ fi
 
 echo "Using Qt Android: $QT_ANDROID_ROOT"
 
+# Host Qt (same version) is required to cross-compile.
+if [ -z "$QT_HOST_PATH" ]; then
+    for cand in "$HOME/Qt"/*/gcc_64 /opt/Qt/*/gcc_64; do
+        if [ -d "$cand" ]; then
+            QT_HOST_PATH="$cand"
+            break
+        fi
+    done
+fi
+
 # Configure with CMake using NDK's built-in toolchain
 echo "Configuring for Android (ABI: arm64-v8a, Platform: android-34)..."
 cmake -S .. -B . \
@@ -123,6 +149,8 @@ cmake -S .. -B . \
     -DANDROID_PLATFORM=android-34 \
     -DQt6_DIR="$QT_ANDROID_ROOT/lib/cmake/Qt6" \
     -DCMAKE_PREFIX_PATH="$QT_ANDROID_ROOT" \
+    -DQT_HOST_PATH="$QT_HOST_PATH" \
+    -DQT_HOST_PATH_CMAKE_DIR="$QT_HOST_PATH/lib/cmake" \
     -DANDROID_SDK_ROOT="$ANDROID_SDK_ROOT" \
     -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=BOTH \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
