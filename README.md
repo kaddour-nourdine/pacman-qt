@@ -68,10 +68,29 @@ anything failed, so it also works as a plain command-line tool.
 
 `app/` is built only with `-DPACMAN_BUILD_APP=ON` (default `OFF`, so the core still builds on a
 machine without Qt). It needs the Qt 6 development packages for **Quick**,
-**QuickControls2** and **Multimedia** (the latter for the audio player), e.g. on Fedora:
+**QuickControls2** and **Multimedia** (the latter for the audio player). Install them with
+your distribution's package manager:
 
 ```sh
+# Fedora / RHEL / CentOS
 sudo dnf install qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtmultimedia-devel
+
+# Debian / Ubuntu
+sudo apt install qt6-base-dev qt6-declarative-dev qt6-multimedia-dev
+
+# openSUSE / SLES
+sudo zypper install qt6-base-devel qt6-declarative-devel qt6-multimedia-devel
+
+# Arch Linux
+sudo pacman -S qt6-base qt6-declarative qt6-multimedia
+
+# Alpine
+sudo apk add qt6-qtbase-dev qt6-qtdeclarative-dev qt6-qtmultimedia-dev
+```
+
+Then build and run:
+
+```sh
 cmake -S . -B build -DPACMAN_BUILD_APP=ON && cmake --build build -j
 ./build/app/pacman_app
 ```
